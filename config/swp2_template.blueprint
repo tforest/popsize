@@ -1,0 +1,25 @@
+#blueprint
+#input setting
+popid:
+nseq:
+L:
+whether_folded:
+SFS:
+#smallest_size_of_SFS_bin_used_for_estimation: 1
+#largest_size_of_SFS_bin_used_for_estimation: nseq/2 ou nseq-1
+pct_training: 0.99
+nrand:
+project_dir:
+stairway_plot_dir: /media/camille/Donnees/Documents/Etudes/ENS/M2/Projet/scripts/stairway_plot_v2.1.1/stairway_plot_es
+ninput: 200
+#random_seed: 6
+#output setting
+mu:
+year_per_generation:
+#plot setting
+plot_title:
+xrange: 0.1,10000
+yrange: 0,0
+xspacing: 2
+yspacing: 2
+fontsize: 12
