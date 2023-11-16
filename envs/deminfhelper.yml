@@ -65,11 +65,13 @@ dependencies:
   - perl=5.34.0=h5eee18b_2
   - pillow=10.0.1=py311h8aef010_1
   - pip=23.3=py311h06a4308_0
+  - psmc=0.6.5=h43eeafb_2
   - pyparsing=3.0.9=py311h06a4308_0
   - python=3.11.5=h955ad1f_0
   - python-dateutil=2.8.2=pyhd3eb1b0_0
   - python_abi=3.11=2_cp311
   - readline=8.2=h5eee18b_0
+  - seqtk=1.4=he4a0461_1
   - setuptools=68.0.0=py311h06a4308_0
   - six=1.16.0=pyhd3eb1b0_1
   - sqlite=3.41.2=h5eee18b_0
