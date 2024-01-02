@@ -9,7 +9,11 @@ REFGENOME = samples['refGenome'].unique().tolist()
 
 rule all:
     input:
-        expand("results/{refGenome}/popsize/output_smcpp/{prefix}_model.final.json", refGenome=REFGENOME, prefix=config['final_prefix'])
+        expand("results/{refGenome}/popsize/SFS_{prefix}.txt", refGenome=REFGENOME, prefix=config['final_prefix']),
+        *(expand("results/{refGenome}/popsize/output_smcpp/{prefix}_model.final.json", refGenome=REFGENOME, 
+        prefix=config['final_prefix']) if "smcpp" in config['popsize_tools'] else []),
+        *(expand("results/{refGenome}/popsize/output_stairwayplot2/{prefix}/{prefix}.final.summary", refGenome=REFGENOME, 
+        prefix=config['final_prefix']) if "swp2" in config['popsize_tools'] else [])
 
 rule init_module:
     """
