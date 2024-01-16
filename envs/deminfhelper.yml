@@ -8,19 +8,24 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_kmp_llvm
+  - bc=1.07.1=h7f98852_0
   - bcftools=1.18=h8b25389_0
   - bottleneck=1.3.5=py311hbed6279_0
   - brotli=1.0.9=h5eee18b_7
   - brotli-bin=1.0.9=h5eee18b_7
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.19.1=h5eee18b_0
-  - ca-certificates=2023.08.22=h06a4308_0
+  - ca-certificates=2023.12.12=h06a4308_0
   - contourpy=1.0.5=py311hdb19cb5_0
   - cycler=0.11.0=pyhd3eb1b0_0
+  - dadi=2.3.3=py311h79215bd_0
+  - dadi-cli=0.9.3=pyhd8ed1ab_0
   - fonttools=4.25.0=pyhd3eb1b0_0
   - freetype=2.12.1=h4a9f257_0
+  - gawk=5.1.0=h7b6447c_0
   - gdbm=1.18=hd4cb3f1_4
   - gsl=2.7=he838d99_0
+  - gzip=1.13=hd590300_0
   - htslib=1.18=h81da01d_0
   - java-jre=8.45.14=0
   - kiwisolver=1.4.4=py311h6a678d5_0
@@ -59,16 +64,18 @@ dependencies:
   - msmc2=2.1.4=hdfd78af_0
   - munkres=1.0.7=py_1
   - ncurses=6.4=h6a678d5_0
+  - nlopt=2.7.1=py311h9461afb_4
   - nomkl=1.0=h5ca1d4c_0
-  - numexpr=2.8.7=py311h039bad6_104
+  - numexpr=2.8.8=py311h039bad6_100
   - numpy=1.26.0=py311h64a7726_0
   - openjpeg=2.5.0=h488ebb8_3
-  - openssl=3.1.4=hd590300_0
+  - openssl=3.2.0=hd590300_1
   - packaging=23.1=py311h06a4308_0
   - pandas=2.1.1=py311ha02d727_0
   - perl=5.34.0=h5eee18b_2
   - pillow=10.0.1=py311h8aef010_1
   - pip=23.3=py311h06a4308_0
+  - plink2=2.00a5=h4ac6f70_0
   - psmc=0.6.5=h43eeafb_2
   - pyparsing=3.0.9=py311h06a4308_0
   - python=3.11.5=h955ad1f_0
@@ -77,6 +84,7 @@ dependencies:
   - python_abi=3.11=2_cp311
   - pytz=2023.3.post1=py311h06a4308_0
   - readline=8.2=h5eee18b_0
+  - scipy=1.11.4=py311h64a7726_0
   - seqtk=1.4=he4a0461_1
   - setuptools=68.0.0=py311h06a4308_0
   - six=1.16.0=pyhd3eb1b0_1
