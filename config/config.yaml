@@ -1,0 +1,10 @@
+## Popsize options
+
+popsize_tools: "dadi"
+gen_time: 2
+mut_rate: 3e-8
+folded: True
+length_cutoff: 0
+dadi_optimizations: 100
+
+

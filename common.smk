@@ -27,20 +27,27 @@ def build_deminfhelper_config(results_folder, vcf_file, prefix, output, global_c
         config_parsed = module_conf.read()
     with open(output, 'w') as config_out:
         config_out.write("out_dir: "+results_folder+"/popsize/\n"+\
-                        "## DATA\nvcf: "+vcf_file+"\n"+\
-                        "## L: effective sequence length genotyped\nL: "+str(Nseq)+"\n"+\
-                        "## Population(s)\nname_pop: "+prefix+"\n"+\
-                        "npop: 1\n# POP 1\n"+prefix+": "+samples+"\n"+\
-                        "# PARAM\ngen_time: "+str(global_config['gen_time'])+"\n"+\
-                        "mut_rate: "+str(global_config['mut_rate'])+"\n"+\
-                        "## COMPUTE SFS\nout_dir_sfs: "+results_folder+"/popsize/\n"+\
-                        "folded: "+str(global_config['folded'])+"\n"+\
-                        "## SFS if previously computed\npath_to_sfs: "+results_folder+"/popsize/SFS_"+prefix+".txt\n"+\
-                        "out_dir_stairwayplot2: "+results_folder+"/popsize/output_stairwayplot2/\n"+\
-                        "summary_file_stw: "+results_folder+"/output_stairwayplot2/"+prefix+"/"+prefix+".final.summary\n"+\
-                        "## SMC++\nout_dir_smcpp: "+results_folder+"/popsize/output_smcpp/\n"+\
-                        "length_cutoff: 100000\n"+\
-                        "plot_file_smcpp: "+results_folder+"/popsize/output_smcpp/"+prefix+"_inference.csv\n"+\
-                        "## GQ distribution\nout_dir_gq_distrib: "+results_folder+"/output_gq_distrib/\n"+\
-                        "## FINAL INFERENCES\nfinal_out_dir: "+results_folder+"/inferences/\n")
+                         "## DATA\nvcf: "+vcf_file+"\n"+\
+                         "ref_genome: "+results_folder+"/data/genome/"+results_folder.split("/")[-1]+".fna\n"\
+                         "## L: effective sequence length genotyped\nL: "+str(Nseq)+"\n"+\
+                         "## Population(s)\nname_pop: "+prefix+"\n"+\
+                         "npop: 1\n# POP 1\n"+prefix+": "+samples+"\n"+\
+                         "# PARAM\ngen_time: "+str(global_config['gen_time'])+"\n"+\
+                         "mut_rate: "+str(global_config['mut_rate'])+"\n"+\
+                         "## COMPUTE SFS\nout_dir_sfs: "+results_folder+"/popsize/\n"+\
+                         "folded: "+str(global_config['folded'])+"\n"+\
+                         "length_cutoff: "+str(global_config['contig_size'])+"\n"+\
+                         "## SFS if previously computed\npath_to_sfs: "+results_folder+"/popsize/SFS_"+prefix+".fs\n"+\
+                         "out_dir_stairwayplot2: "+results_folder+"/popsize/output_stairwayplot2/\n"+\
+                         "summary_file_stw: "+results_folder+"/popsize/output_stairwayplot2/"+prefix+"/"+prefix+".final.summary\n"+\
+                         "out_dir_dadi: "+results_folder+"/popsize/output_dadi/\n"+\
+                         "optimizations: "+str(global_config['dadi_optimizations'])+"\n"+\
+                         "out_dir_msmc2: "+results_folder+"/popsize/output_msmc2/\n"+\
+                         "## SMC++\nout_dir_smcpp: "+results_folder+"/popsize/output_smcpp/\n"+\
+                         "## PSMC\nout_dir_psmc: "+results_folder+"/popsize/output_psmc/\n"+\
+                         "plot_file_smcpp: "+results_folder+"/popsize/output_smcpp/"+prefix+"_inference.csv\n"+\
+                         "## GQ distribution\nout_dir_gq_distrib: "+results_folder+"/popsize/output_stats/\n"+\
+                         "## FINAL INFERENCES\nfinal_out_dir: "+results_folder+"/popsize/inferences/\n"+ \
+                         "## Stats\nout_dir_stats: "+results_folder+"/popsize/output_stats/\n" + \
+                         "out_dir_gq_distrib: "+results_folder+"/popsize/output_gq_distrib/")
         config_out.write(config_parsed)
