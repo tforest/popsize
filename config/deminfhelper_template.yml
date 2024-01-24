@@ -6,4 +6,3 @@ blueprint_template: workflow/modules/popsize/config/swp2_template.blueprint
 lower_bound: 1, 1, 0.05, 0.01
 p0: 0.01, 0.001, 0.01, 0.01
 upper_bound: 10, 4, 0.1, 10
-out_dir_dadi: RESULT_DIR/output_dadi/

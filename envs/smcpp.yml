@@ -1,27 +1,30 @@
 name: smcpp
 channels:
-  - bioconda
   - terhorst
-  - conda-forge
+  - bioconda
+  - r
   - defaults
+  - conda-forge
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_kmp_llvm
   - alsa-lib=1.2.3.2=h166bdaf_0
   - appdirs=1.4.4=pyh9f0ad1d_0
   - atk-1.0=2.38.0=hd4edc92_1
+  - blas=1.0=openblas
   - brotli=1.1.0=hd590300_1
   - brotli-bin=1.1.0=hd590300_1
   - bzip2=1.0.8=hd590300_5
   - c-ares=1.21.0=hd590300_0
-  - ca-certificates=2023.08.22=h06a4308_0
+  - ca-certificates=2023.12.12=h06a4308_0
   - cairo=1.16.0=ha12eb4b_1010
-  - certifi=2023.7.22=pyhd8ed1ab_0
+  - certifi=2023.11.17=py39h06a4308_0
   - chrpath=0.16=h7f98852_1002
   - colorama=0.4.6=pyhd8ed1ab_0
   - contourpy=1.2.0=py39h7633fee_0
   - cycler=0.12.1=pyhd8ed1ab_0
   - cython=3.0.0=py39h5eee18b_0
+  - dadi=2.3.3=py39hff79334_0
   - dbus=1.13.6=h5008d03_3
   - expat=2.5.0=hcb278e6_1
   - font-ttf-dejavu-sans-mono=2.37=hab24e00_0
@@ -106,11 +109,12 @@ dependencies:
   - mysql-common=8.0.32=h14678bc_0
   - mysql-libs=8.0.32=h54cf53e_0
   - ncurses=6.4=h59595ed_2
+  - nlopt=2.7.1=py39h74f0fd2_4
   - nspr=4.35=h27087fc_0
   - nss=3.94=h1d7d5a4_0
-  - numpy=1.26.0=py39h474f0d3_0
+  - numpy=1.22.4=py39hc58783e_0
   - openjpeg=2.5.0=h7d73246_1
-  - openssl=1.1.1w=hd590300_0
+  - openssl=1.1.1w=h7f8727e_0
   - packaging=23.2=pyhd8ed1ab_0
   - pandas=2.1.3=py39hddac248_0
   - pango=1.50.7=hbd2fdc8_0
@@ -119,6 +123,7 @@ dependencies:
   - pillow=9.2.0=py39hf3a2cdf_3
   - pip=23.3.1=pyhd8ed1ab_0
   - pixman=0.42.2=h59595ed_0
+  - plotly=5.9.0=py39h06a4308_0
   - pthread-stubs=0.4=h36c2ea0_1001
   - pyparsing=3.1.1=pyhd8ed1ab_0
   - pyqt=5.12.3=py39hf3d152e_8
@@ -145,6 +150,7 @@ dependencies:
   - smcpp=1.15.4=py39hb1fe62b_0
   - sqlite=3.44.0=h2c6b66d_0
   - statsmodels=0.14.0=py39h44dd56e_2
+  - tenacity=8.2.2=py39h06a4308_0
   - threadpoolctl=3.2.0=pyha21a80b_0
   - tk=8.6.13=noxft_h4845f30_101
   - tomli=2.0.1=pyhd8ed1ab_0
@@ -171,4 +177,3 @@ dependencies:
   - zipp=3.17.0=pyhd8ed1ab_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hfc55251_0
-

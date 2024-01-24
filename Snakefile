@@ -9,6 +9,10 @@ include: "common.smk"
 popsize_config = yaml.safe_load(open("workflow/modules/popsize/config/config.yaml"))
 config.update(popsize_config)
 
+# Update resources
+popsize_resources = yaml.safe_load(open("workflow/modules/popsize/config/resources.yaml"))
+resources.update(popsize_resources)
+
 samples = pd.read_table(config["samples"], sep=",", dtype=str).replace(' ', '_', regex=True)
 REFGENOME = samples['refGenome'].unique().tolist()
 
@@ -17,7 +21,7 @@ rule all:
     input:
         expand("results/{refGenome}/popsize/SFS_{prefix}.fs", refGenome=REFGENOME, prefix=config['final_prefix']),
         expand("results/{refGenome}/popsize/output_stats/{prefix}_PCA.png", refGenome=REFGENOME, prefix=config['final_prefix']),
-        *(expand("results/{refGenome}/popsize/output_smcpp/{prefix}_model.final.json", refGenome=REFGENOME, 
+        *(expand("results/{refGenome}/popsize/output_smcpp/{prefix}.final.json", refGenome=REFGENOME, 
         prefix=config['final_prefix']) if "smcpp" in config['popsize_tools'] else []),
         *(expand("results/{refGenome}/popsize/output_stairwayplot2/{prefix}/{prefix}.final.summary", refGenome=REFGENOME, 
         prefix=config['final_prefix']) if "swp2" in config['popsize_tools'] else []),
@@ -25,7 +29,7 @@ rule all:
         *(expand("results/{refGenome}/popsize/output_dadi/{prefix}.InferDM.bestfits", refGenome=REFGENOME, 
         prefix=config['final_prefix']) if "dadi" in config['popsize_tools'] else []),
         # Wait for PSMC output if used in config
-        *(expand("results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final", refGenome=REFGENOME, 
+        *(expand("results/{refGenome}/popsize/output_psmc/{prefix}.eps", refGenome=REFGENOME, 
         prefix=config['final_prefix']) if "psmc" in config['popsize_tools'] else []),
         # Wait for MSMC2 output if used in config
         *(expand("results/{refGenome}/popsize/output_msmc2/{prefix}_msmc2.final.txt", refGenome=REFGENOME, 
@@ -69,6 +73,10 @@ rule stairwayplot2:
         stairwayplot2_summary = "results/{refGenome}/popsize/output_stairwayplot2/{prefix}/{prefix}.final.summary"
     conda:
         "envs/deminfhelper.yml"
+    resources:
+        mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem']
+    threads:
+        resources['swp2']['threads']
     shell:
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --stairwayplot2 ;"+ \
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_stairwayplot2" 
@@ -81,14 +89,13 @@ rule smcpp:
         config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
         vcf_index = "results/{refGenome}/{prefix}_raw.vcf.gz.tbi"
     output:
-        smcpp_summary = "results/{refGenome}/popsize/output_smcpp/{prefix}_model.final.json"
+        smcpp_summary = "results/{refGenome}/popsize/output_smcpp/{prefix}.final.json"
     conda:
         "envs/smcpp.yml"
-    # TODO: CHECK how to make the RAM scale up
-    resources: mem_mb=10000, mem_mib=1908
-
+    resources: mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem']
+    threads: resources['smcpp']['threads']
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --smcpp;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --cpus {threads} --smcpp ;"+ \
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_smcpp"
         
 rule dadi:
@@ -116,7 +123,7 @@ rule psmc:
         vcf_index = "results/{refGenome}/{prefix}_raw.vcf.gz.tbi",
         ref_genome = "results/{refGenome}/data/genome/{refGenome}.fna"
     output:
-        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final"
+        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}.eps"
     conda:
         "envs/deminfhelper.yml"
     shell:

@@ -1,13 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-parsing() : parses the vcd, compute the sfs if SFS=True, output the msmc input file
-if MSMC=False
+parsing.py - Module of DemInfHelper for parsing and processing VCF files and other data formats in the demography inference workflow.
+
+This module provides functions for parsing and processing VCF files, calculating Site Frequency Spectra (SFS), Genotyping Quality (GQ) distributions,
+and performing various data preprocessing tasks. It also includes functions for dynamic distance evaluation, SNP filtering, and more.
+
+Functions:
+    - distrib_GQ(GQ_pop, line=[], pos_ind=None, bin_size=10):
+        Parse Genotyping Quality (GQ) information from a VCF file and calculate GQ distributions.
+    
+    - parse_config(config_file):
+        Parse a configuration file and return the configuration parameters as a dictionary.
+    
+    - update_config(config_dict, config_file):
+        Update a configuration file with values from a dictionary and preserve in-place comments.
+    
+    - parse_sfs(sfs_file):
+        Parse a Site Frequency Spectrum (SFS) file and return a masked spectrum.
+    
+    - get_contigs_lengths(vcf, length_cutoff=100000, only_names=False):
+        Parse contig lengths from a VCF file header and return a dictionary of contig names and lengths.
+    
+    - dadi_output_parse(dadi_output_file):
+        Parse Dadi model output files and return the results as a list of values.
+    
+    - pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy=2, keep_modified_vcf=False, modified_vcf_ram=False):
+        Perform Principal Component Analysis (PCA) on genetic data from a VCF file and generate PCA plots.
+    
+    - vcf_line_parsing(PARAM, SFS=False, GQ=False, SMCPP=False, segments_size=1000):
+        Parse VCF lines, calculate SNP distances, and generate Site Frequency Spectra (SFS) and GQ distributions.
+
+Each function in this module is designed to assist in parsing and processing genetic data and configuration files for the demography inference workflow.
 """
 
 import gzip
 import os
 import numpy as np
-# from inferences import *
 
 if __package__ is None or __package__ == '':
     import inferences
@@ -22,24 +50,64 @@ import re
 from tqdm import tqdm  # Import tqdm for the progress bar
 
 
-def distrib_GQ(GQ_pop, line = [], pos_ind = None): #PL is a dict
-    samples = [line[i] for i in pos_ind]
-    gq_line = [i[4:] for i in samples] #we get the genotypes
-    gq_line = [i.split(",") for i in gq_line]
-    for sublist in gq_line:
-        gq2 = [int(i) for i in sublist]
-        gq2 = [i - np.min(gq2) for i in gq2]
-        gq2.remove(0)
-        min = np.min(gq2)
-        bin = min - int(str(min)[-1])
-        if bin in GQ_pop.keys():
-            GQ_pop[bin] = GQ_pop[bin]+1
-        else:
-            GQ_pop[bin] = 1
-    return(GQ_pop)
+def distrib_GQ(GQ_pop, line = [], pos_ind = None, bin_size = 10): #PL is a dict
+    """
+    Calculate the distribution of Genotyping Quality (GQ) values from a VCF line.
 
+    This function parses GQ values from the INFO field of a VCF line, groups them into bins,
+    and counts the number of GQ values in each bin.
+
+    Parameters:
+    - GQ_pop (dict): A dictionary to store the GQ distribution.
+    - line (list): A list representing a VCF line split into fields.
+    - pos_ind (list): List of positions for each sample in the VCF.
+    - bin_size (int): The size of bins for grouping GQ values.
+
+    Returns:
+    - GQ_pop (dict): Updated GQ distribution dictionary.
+
+    Raises:
+    - ValueError: If the GQ field is not found in the VCF FORMAT field.
+   """
+
+    format_field = line[8].split(":")  # Split the FORMAT field
+    
+    if "GQ" not in format_field:
+        raise ValueError("GQ field not found in FORMAT field")
+
+    gq_index = format_field.index("GQ")  # Find the position of GQ field in FORMAT
+
+    samples = [line[i] for i in pos_ind]  # Extract sample-specific information
+
+    gq_values = [sample.split(":")[gq_index] for sample in samples]  # Extract GQ values
+
+    for gq_value in gq_values:
+        gq_value = int(gq_value)  # Convert GQ value to integer
+        # Group GQ values into bins of specifed size (e.g. bin_size=10: 0-9, 10-19, etc.)
+        bin_value = gq_value - (gq_value % bin_size) 
+
+        if bin_value in GQ_pop:
+            GQ_pop[bin_value] += 1
+        else:
+            GQ_pop[bin_value] = 1
+
+    return GQ_pop
 
 def parse_config(config_file):
+    """
+    Parse a configuration file and return the configuration parameters as a dictionary.
+
+    This function reads a configuration file line by line and extracts parameter names and values.
+    The resulting dictionary contains configuration parameters with their corresponding values.
+
+    Parameters:
+    - config_file (str): The path to the configuration file.
+
+    Returns:
+    - param (dict): A dictionary containing configuration parameters and values.
+
+    """
+
     param = {}
     with open(config_file, "rt") as config:
         line=config.readline()
@@ -52,6 +120,8 @@ def parse_config(config_file):
     #param["transformed"]=bool(param["transformed"])
     param["name_pop"] = param["name_pop"].split(",")
     param["npop"]=int(param["npop"])
+    if "n_clust_kmeans" in param and param["n_clust_kmeans"] != None:
+        param["n_clust_kmeans"] = eval(param["n_clust_kmeans"])
     if "cpus" in param:
         param["cpus"]=int(param["cpus"])
     else:
@@ -75,15 +145,20 @@ def parse_config(config_file):
 
 def update_config(config_dict, config_file):
     """
-    Update the configuration file with the values from the given config_dict.
-    Preserve in-place comment lines and add new entries at the end.
+    Update a configuration file with values from a dictionary and preserve in-place comments.
+
+    This function takes a dictionary of configuration parameters and their values and updates
+    an existing configuration file. It preserves any comments in the file and adds new entries
+    at the end if necessary.
 
     Parameters:
-    - config_dict (dict): The dictionary containing the updated configuration values.
-    - config_file (str): The path to the configuration file.
+    - config_dict (dict): A dictionary containing updated configuration values.
+    - config_file (str): The path to the configuration file to be updated.
 
     Returns:
     - None
+
+    Note: The function modifies the configuration file in place.
     """
     # Read the existing config file
     with open(config_file, 'r') as file:
@@ -130,21 +205,22 @@ def update_config(config_dict, config_file):
 
 def parse_sfs(sfs_file):
     """
-    Parses a site frequency spectrum (SFS) file and returns a masked spectrum.
+    Parse a Site Frequency Spectrum (SFS) file and return a masked spectrum.
+
+    This function reads an SFS file, extracts the spectrum data, and applies a mask to it.
+    The mask excludes specific bins from the spectrum, resulting in a masked SFS.
 
     Parameters:
-    - sfs_file (str): The path to the SFS file to be parsed.
+    - sfs_file (str): The path to the SFS file to be parsed, in dadi's .fs format.
 
     Returns:
-    - list: A masked spectrum, where bins indicated by the mask are excluded.
+    - masked_spectrum (list): A masked SFS as a list of integers.
 
     Raises:
     - FileNotFoundError: If the specified SFS file is not found.
-    - ValueError: If there are inconsistencies in the file format or data, such as mismatched bin counts.
+    - ValueError: If there are inconsistencies in the file format or data.
 
-    Example:
-    >>> parse_sfs('example.fs')
-    [1, 0, 3, 2, 0]
+    Note: The actual structure of the SFS file is based on dadi's fs format.
     """
     try:
         with open(sfs_file, 'r') as file:
@@ -175,7 +251,21 @@ def parse_sfs(sfs_file):
     return masked_spectrum
 
 def get_contigs_lengths(vcf, length_cutoff=100000, only_names = False):
-    """Parsing gzipped VCF header to get contig lengths from the ##contig comments
+    """
+    Parse contig lengths from a VCF file header and return a dictionary of contig names and lengths.
+
+    This function reads the header of a VCF file and extracts contig information, including contig names
+    and their corresponding lengths. It returns a dictionary with contig names as keys and lengths as values.
+
+    Parameters:
+    - vcf (str): The path to the VCF file.
+    - length_cutoff (int): The minimum contig length to be included.
+    - only_names (bool): If True, return a list of contig names only.
+
+    Returns:
+    - contigs (dict or list): A dictionary of contig names and lengths or a list of contig names.
+
+    Note: The function can return a dictionary of contig names and lengths or a list of contig names.
     """
     contigs = {}
     print(f"Parsing {vcf} to get contigs sizes.")
@@ -220,6 +310,20 @@ def get_contigs_lengths(vcf, length_cutoff=100000, only_names = False):
     return contigs
 
 def dadi_output_parse(dadi_output_file):
+    """
+    Parse Dadi model output files and return the results as a list of values.
+
+    This function parses output files generated by Dadi demographic modeling and extracts the results,
+    including log likelihoods, parameter values, and other relevant information.
+
+    Parameters:
+    - dadi_output_file (str): The path to the Dadi output file.
+
+    Returns:
+    - all_vals (list): A list of parsed values containing log likelihoods, parameter values, etc.
+
+    Note: The structure of Dadi output files can vary, and parsing may need to be adapted accordingly.
+    """
     all_vals = []
     ite = 0
     converged = False
@@ -249,10 +353,29 @@ def dadi_output_parse(dadi_output_file):
 
 def pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy = 2,
                  keep_modified_vcf = False, modified_vcf_ram = False):
+    """
+    Perform Principal Component Analysis (PCA) on genetic data from a VCF file and generate PCA plots.
+
+    This function conducts PCA on genetic data from a VCF file, generates PCA plots, and saves the results
+    in the specified output directory.
+
+    Parameters:
+    - popid (str): Identifier for the population being analyzed.
+    - vcf_file (str): The path to the VCF file containing genetic data.
+    - nb_samples (int): The number of samples in the VCF file.
+    - out_dir (str): The directory where PCA results and plots will be saved.
+    - ploidy (int): The ploidy level for the genetic data (default is 2).
+    - keep_modified_vcf (bool): If True, keep the modified VCF file; otherwise, it will be deleted.
+    - modified_vcf_ram (bool): If True, use RAM for the modified VCF file (only relevant for large VCF files).
+
+    Returns:
+    - None
+
+    """
     plink_out_dir = out_dir+"/plink/"
     if not os.path.exists(plink_out_dir):
         os.makedirs(plink_out_dir)
-    # need to use bcftools to add IDs to replace the "." with unique IDs for each variant
+    # need to use bcftools to add IDs to replace the "." with unique IDs for each variant 
     cmd1 = "".join(["bcftools annotate --set-id +'%CHROM:%POS' ", \
                     vcf_file, " -Oz -o ", \
                     plink_out_dir+popid+"_IDs.vcf.gz"])
@@ -274,135 +397,32 @@ def pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy = 2,
     os.system(cmd3)
     # Generate plot
     plots.plot_pca(plink_out_dir+popid+".pca.eigenvec", plink_out_dir+popid+".pca.eigenval", popid = popid, out_dir = out_dir)
-# Function using segments    
-# def vcf_line_parsing(PARAM, SFS = False, GQ = False, SMCPP = False, segments_size = 1000):
-#     # cutoff is the minimum size of each contig to be used
-#     # required for SMC++, as it works for contigs > 100kb or 1mb
-#     length_cutoff = int(PARAM["length_cutoff"])
 
-#     genome_segments = {}
-#     # the genome is going to be chopped in segments of a maximum size
-#     # defined by segments_size parameter.
-#     # Each segment will store its SFS.
-#     # as well as the mean coverage of SNPs
-#     # At the end, only segments with sufficient coverage will be kept
-
-#      ### L: Estimated number of sequence genotyped.
-#      # from GADMA
-#      # Assume total length of sequence that was used for SFS building is equal to Nseq.
-#      # From this data total number of X SNP’s were received.
-#      # But not all of them were used for SFS: some of them (e.g. total number of Y SNP’s) were filtered out.
-#      # Then we should count filtered SNP’s and take L value the following way:
-#      # L = (X - Y) / X * Nseq
-    
-#     with gzip.open(PARAM["vcf"],  mode='rt') as vcf:
-#         SFS_dict = {}
-#         GQ_dict = {}
-#         cols_in_vcf = {}
-        
-#         segments_mean_snps_freq = []
-#         Nseq = 0
-#         All_snp_count = 0
-#         Kept_snp_count = 0    
-#         # we initialize a sfs for each population
-#         for p in PARAM["name_pop"]:
-#             genome_segments[p] = {}            
-#             SFS_dict[p] = np.array(sfs.build_sfs(n=PARAM["n_"+str(p)], folded=PARAM["folded"], sfs_ini=True))
-#         if GQ:
-#             for p in PARAM["name_pop"]:
-#                         GQ_dict[p] = {}
-#         if SMCPP:
-#             contigs = []
-#         line = vcf.readline()
-#         pbar = tqdm(total=0, dynamic_ncols=True, unit='line', unit_scale=True) # Initialize the progress bar
-#         # we read all the lines of the vcf
-#         while line != "":
-#             if line[0:6] == "#CHROM":
-#                 # parsing the header line
-#                 for p in PARAM["name_pop"]:
-#                     pos_ind_pop = []
-#                     for ind in PARAM[p]:
-#                         pos_ind_pop.append(line[:-1].split("\t").index(ind))
-#                     cols_in_vcf["pos_"+p] = pos_ind_pop
-#                 # skip the rest of the code for this line
-#                 line = vcf.readline()
-#                 continue
-#             if line.startswith("#"):
-#                 # ignore other comments
-#                 line = vcf.readline()
-#                 continue
-#             # the line is a variant, count it
-#             All_snp_count += 1
-#             chrm = line.split()[0]
-#             pos = int(line.split()[1])
-#             if chrm not in genome_segments[p].keys():
-#                 genome_segments[p][chrm] = {}
-#                 start_pos = pos
-#                 end_pos = start_pos+segments_size
-#                 # initiate SFS for the first segment of this CHR
-#                 # each segment is defined by its startpos, it belongs to a chromosome, itself from a certain (sub)population
-#                 genome_segments[p][chrm][start_pos] = {}
-#                 genome_segments[p][chrm][start_pos]['sfs'] = sfs.build_sfs(n=PARAM["n_"+str(p)], folded=PARAM["folded"], sfs_ini=True)
-#                 genome_segments[p][chrm][start_pos]['count_snps'] = 0
-#                 genome_segments[p][chrm][start_pos]['snps_mean'] = 0
-#             elif pos > end_pos:
-#                 # when we switch segment, same CHR,
-#                 # We first store previous segment values.
-
-#                 # Proportion of SNPs of all sites scanned for this segment
-#                 # when switching segment: pos-start_pos should be
-#                 # equal to segment_size, except for the last segment which can be shorter.
-#                 genome_segments[p][chrm][start_pos]['snps_mean'] = genome_segments[p][chrm][start_pos]['count_snps'] / (pos-start_pos)
-#                 segments_mean_snps_freq.append(genome_segments[p][chrm][start_pos]['snps_mean'])
-#                 # change segment
-#                 start_pos = pos
-#                 end_pos = start_pos+segments_size
-#                 # initiate SFS for this new segment
-#                 genome_segments[p][chrm][start_pos] = {}
-#                 genome_segments[p][chrm][start_pos]['sfs'] = sfs.build_sfs(n=PARAM["n_"+str(p)], folded=PARAM["folded"], sfs_ini=True)
-#                 genome_segments[p][chrm][start_pos]['count_snps'] = 0
-#                 genome_segments[p][chrm][start_pos]['snps_mean'] = 0
-
-#             if line[0] != "#" and ".:" not in line and "/." not in line and "./" not in line and ".|" not in line and "|." not in line and "," not in line.split("\t")[4]:    #we only keep the bi-allelique sites
-#                 Kept_snp_count += 1
-#                 split_line = line.split("\t")
-#                 for p in PARAM["name_pop"]:
-#                     genome_segments[p][chrm][start_pos]['sfs'] = sfs.build_sfs(n=PARAM["n_"+p], \
-#                                                                                 folded=PARAM["folded"], \
-#                                                                                 sfs_ini = False, \
-#                                                                                 line = split_line, \
-#                                                                                 sfs = genome_segments[p][chrm][start_pos]['sfs'], \
-#                                                                                 pos_ind = cols_in_vcf["pos_"+p])
-#                     genome_segments[p][chrm][start_pos]['count_snps'] += 1
-#                     # SFS_dict[p] = sfs.build_sfs(n=PARAM["n_"+p], folded=PARAM["folded"],  sfs_ini = False, \
-#                     #         line = split_line, sfs = SFS_dict[p], pos_ind = cols_in_vcf["pos_"+p])
-
-#                 if GQ:
-#                     for p in PARAM["name_pop"]:
-#                         GQ_dict[p] = distrib_GQ(GQ_pop = GQ_dict[p], line = split_line, pos_ind = cols_in_vcf["pos_"+p])
-#             line = vcf.readline()
-#             pbar.update(1)
-#     pbar.close()  # Close the progress bar when done
-#     print("SFS parsing: Done. Filtering variants keeping only segments with sufficient coverage.")
-#     sorted_data = np.sort(segments_mean_snps_freq)
-#     data_median = np.median(sorted_data)
-#     Kept_snp_count = 0
-#     snps_coverage_by_chr = {}
-#     for p in PARAM["name_pop"]:
-#         for chrm in genome_segments[p]:
-#             snps_coverage_by_chr[chrm] = {}
-#             for start_pos_segment in genome_segments[p][chrm]:
-#                 snps_coverage_by_chr[chrm][start_pos_segment] = 0
-#                 if genome_segments[p][chrm][start_pos_segment]['snps_mean'] >= data_median:
-#                     # keep this segment, add its SFS to the final SFS for this p
-#                     Kept_snp_count += 1
-#                     SFS_dict[p] += np.array(genome_segments[p][chrm][start_pos_segment]['sfs'])
-#                     snps_coverage_by_chr[chrm][start_pos_segment] = genome_segments[p][chrm][start_pos_segment]['snps_mean']
-#     L = (All_snp_count - Kept_snp_count) / All_snp_count * Nseq
-    
-#     return SFS_dict, GQ_dict, round(L), snps_coverage_by_chr
 # Function using dynamic distance evaluation with rolling positions
-def vcf_line_parsing(PARAM, SFS = False, GQ = False, SMCPP = False, segments_size = 1000):
+def vcf_line_parsing(PARAM, SFS = False, GQ = False, SMCPP = False):
+    """
+    Parse VCF lines, calculate SNP distances, and generate Site Frequency Spectra (SFS) and GQ distributions.
+
+    This function parses VCF lines, calculates SNP distances between samples, and can generate Site Frequency Spectra (SFS)
+    and Genotyping Quality (GQ) distributions depending on the specified parameters.
+
+    Parameters:
+    - PARAM (dict): A dictionary containing configuration parameters.
+    - SFS (bool): If True, generate Site Frequency Spectra (SFS).
+    - GQ (bool): If True, generate Genotyping Quality (GQ) distributions.
+    - SMCPP (bool): If True, perform specific tasks for SMC++ input.
+
+    Returns:
+    - None
+
+    Example:
+    >>> params = {'folded': True, 'name_pop': ['pop1', 'pop2'], ...}
+    >>> SFS = True
+    >>> GQ = True
+    >>> vcf_line_parsing(params, SFS, GQ)
+
+    Note: The function performs various tasks based on the specified parameters.
+    """
     # cutoff is the minimum size of each contig to be used
     # required for SMC++, as it works for contigs > 100kb or 1mb
     length_cutoff = int(PARAM["length_cutoff"])

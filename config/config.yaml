@@ -1,6 +1,7 @@
 ## Popsize options
 
-popsize_tools: "dadi"
+#popsize_tools: "dadi,swp2,psmc,msmc2,smcpp"
+popsize_tools: "msmc2,smcpp"
 gen_time: 2
 mut_rate: 3e-8
 folded: True

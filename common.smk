@@ -1,4 +1,8 @@
 import gzip
+from yaml import safe_load
+
+with open(config["resource_config"], "r") as f:
+    resources = safe_load(f)
 
 def build_deminfhelper_config(results_folder, vcf_file, prefix, output, global_config, module_config):
     # parse template
@@ -49,5 +53,5 @@ def build_deminfhelper_config(results_folder, vcf_file, prefix, output, global_c
                          "## GQ distribution\nout_dir_gq_distrib: "+results_folder+"/popsize/output_stats/\n"+\
                          "## FINAL INFERENCES\nfinal_out_dir: "+results_folder+"/popsize/inferences/\n"+ \
                          "## Stats\nout_dir_stats: "+results_folder+"/popsize/output_stats/\n" + \
-                         "out_dir_gq_distrib: "+results_folder+"/popsize/output_gq_distrib/")
+                         "## PCA K-means clustering\nn_clust_kmeans: 1\n")
         config_out.write(config_parsed)

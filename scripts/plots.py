@@ -1,8 +1,45 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Plot  the plots
+plots.py - Module of DemInfHelper for generating various plots and visualizations as part of the demography inference workflow.
+
+This module provides functions for generating plots and visualizations related to population genetics, demographic inference,
+and data analysis. It includes functions for Principal Component Analysis (PCA), Dadi model parameter estimation plots,
+genotype quality distribution plots, and more.
+
+Functions:
+    - plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9):
+        Perform PCA on genetic data and generate plots, including PCA scatter plots and explained variance bar plots.
+    
+    - plot_dadi_output_three_epochs(dadi_vals_list, name_pop, out_dir, mu, L, gen_time,
+                                   xlim=None, ylim=None, max_v=-10**6, nb_plots_max=10, title="Dadi pop. estimates"):
+        Generate plots from Dadi model parameter estimates for three epochs, including parameter value distributions and trajectories.
+    
+    - plot_psmc(popid, sample_names, psmc_output_file, plot_output_prefix, gen_time, mut_rate, out_dir, x=0):
+        Generate PSMC (Pairwise Sequentially Markovian Coalescent) plots based on PSMC output files.
+    
+    - plot_msmc2(popid, summary_file, mu, gen_time, out_dir):
+        Generate MSMC (Multiple Sequentially Markovian Coalescent) plots based on MSMC2 summary files.
+    
+    - plot_stairwayplot2(popid, summary_file, out_dir):
+        Generate stairway plot-style demographic history plots based on summary files.
+
+    - plot_smcpp(popid, summary_file, out_dir):
+        Generate plots of effective population size (Ne) over time based on smc++ summary files.
+    
+    - plot_distrib_gq(popid, gq, out_dir_gq):
+        Generate Genotyping Quality (GQ) distribution plots based on GQ values from VCF files.
+
+    - plot_sfs(sfs, plot_title, output_file):
+        Generate Site Frequency Spectrum (SFS) plots based on SFS data.
+
+    - plot_dadi_output_three_epochs(dadi_vals_list, name_pop, out_dir, mu, L, gen_time,
+                                   xlim=None, ylim=None, max_v=-10**6, nb_plots_max=10, title="Dadi pop. estimates"):
+        Generate plots from Dadi model parameter estimates for three epochs, including parameter value distributions and trajectories.
+
+Each function is designed to provide visualization capabilities for different aspects of the demography inference workflow.
 """
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,8 +48,37 @@ import pandas as pd
 import os
 import re
 from matplotlib.backends.backend_pdf import PdfPages
+import plotly.express as px
+from sklearn.cluster import KMeans
+from scipy.spatial import ConvexHull
+import plotly.graph_objects as go
 
 def plot_sfs(sfs, plot_title, output_file):
+    """
+    Plot the Site Frequency Spectrum (SFS).
+
+    This function generates a bar plot of the Site Frequency Spectrum (SFS) based on the input data.
+
+    Parameters:
+        sfs (list): A list of integers representing the SFS. Each value corresponds to the number of alternate alleles
+                    observed at different sites.
+        plot_title (str): The title for the plot.
+        output_file (str): The path to save the generated plot as an image file.
+
+    Example:
+        sfs = [10, 15, 8, 3, 2]
+        plot_title = "SFS Plot"
+        output_file = "sfs_plot.png"
+        plot_sfs(sfs, plot_title, output_file)
+
+    Note:
+        - The 'sfs' list should contain counts of alternate alleles at different sites.
+        - The 'plot_title' will be used as the title of the generated plot.
+        - The 'output_file' should specify the path to save the plot image.
+
+    Returns:
+        None: The function saves the plot as an image file but does not return any values.
+    """
     plt.bar(np.arange(1, len(sfs)+1), sfs)
     plt.title(plot_title)
     plt.xlabel('# of alternate alleles')
@@ -22,6 +88,23 @@ def plot_sfs(sfs, plot_title, output_file):
     plt.close()
 
 def plot_stairwayplot2(popid, summary_file, out_dir):
+    """
+    Generate a stairway plot from summary data.
+
+    This function reads summary data from a Stairway Plot analysis, extracts the
+    effective population size (Ne) estimates over time, and generates a plot.
+
+    Parameters:
+        popid (str): Identifier for the population.
+        summary_file (str): Path to the Stairway Plot summary data file.
+        out_dir (str): Directory where the stairway plot image will be saved.
+
+    Note:
+        - The plot will be saved as "{popid}_stw_plot.png" in the specified 'out_dir'.
+
+    Returns:
+        None: The function saves the stairway plot as an image file but does not return any values.
+    """
     Ne_med=[]
     Ne1=[]
     Ne3=[]
@@ -46,6 +129,29 @@ def plot_stairwayplot2(popid, summary_file, out_dir):
     plt.close()
 
 def plot_msmc2(popid, summary_file, mu, gen_time, out_dir):
+    """
+    Generate a plot from MSMC2 summary data.
+
+    This function reads summary data from MSMC2 analysis, scales the time and
+    population size estimates, and generates a plot showing effective population size (Ne)
+    changes over time.
+
+    Parameters:
+        popid (str): Identifier for the population.
+        summary_file (str): Path to the MSMC2 summary data file.
+        mu (float): Mutation rate per generation.
+        gen_time (float): Generation time in years.
+        out_dir (str): Directory where the plot image will be saved.
+
+    Note:
+        - The 'summary_file' should contain tab-separated summary data with columns
+          'left_time_boundary', 'right_time_boundary', and 'lambda'.
+        - Time is scaled from units of the per-generation mutation rate to generations.
+        - The plot will be saved as "popid_msmc2_plot.png" in the specified 'out_dir'.
+
+    Returns:
+        None: The function saves the plot as an image file but does not return any values.
+    """
     #scaled_left_bound = np.array()
     mu = float(mu)
     gen_time = float(gen_time)
@@ -68,14 +174,63 @@ def plot_msmc2(popid, summary_file, mu, gen_time, out_dir):
 def plot_psmc(popid, sample_names, psmc_output_file,
               plot_output_prefix, gen_time, mut_rate,
               out_dir, x=0):
+    """
+    Generate a PSMC plot from PSMC output.
+
+    This function generates a PSMC plot using the PSMC plot script provided by PSMC
+    (psmc_plot.pl). It takes PSMC output data and creates a plot in both EPS and PNG formats.
+
+    Parameters:
+        popid (str): Identifier for the population.
+        sample_names (list): List of sample names used in PSMC analysis.
+        psmc_output_file (str): Path to the PSMC output file.
+        plot_output_prefix (str): Prefix for the plot output files.
+        gen_time (float): Generation time in years.
+        mut_rate (float): Mutation rate per generation.
+        out_dir (str): Directory where the plot image files will be saved.
+        x (int, optional): Minimum generations (0 for auto, default is 0).
+
+    Note:
+        - The 'sample_names' list should contain the names of samples used in PSMC analysis.
+        - The 'psmc_output_file' is the output file generated by PSMC.
+        - The 'plot_output_prefix' is used as the prefix for the output plot files.
+        - The function assumes that 'psmc_plot.pl' is available in the system's PATH.
+
+    Returns:
+        None: The function generates PSMC plot files but does not return any values.
+    """
     # x: minimum generations, 0 for auto [10000]
     # R: DO not remove temporary files
     cmd = " ".join(["psmc_plot.pl -g", str(gen_time), "-x", str(x),
                     "-u", str(mut_rate), "-R", plot_output_prefix, psmc_output_file])
     os.system(cmd)
+    print(cmd)
     os.system(f"cp {plot_output_prefix}.eps {out_dir+popid}_psmc_plot.eps")
     
 def plot_distrib_gq(popid, gq, out_dir_gq):
+    """
+    Plot the distribution of Genotype Quality (GQ) values from a VCF file.
+
+    Genotype Quality (GQ) is a phred score that represents the probability that the retained genotype was called
+    correctly. It mirrors the efficiency of the calling process, which is influenced by external factors such as
+    sequencing depth and coverage.
+
+    This function takes a dictionary of GQ values and creates a bar plot showing the distribution of GQ values along
+    with the corresponding count of sites. The GQ values provide insight into the quality of genotyping in the VCF file.
+
+    Parameters:
+        popid (str): Identifier for the population.
+        gq (dict): Dictionary containing GQ values as keys and their counts as values.
+        out_dir_gq (str): Directory where the GQ distribution plot will be saved.
+
+    Note:
+        - The 'gq' dictionary should contain GQ values as keys and the number of sites with each GQ value as values.
+        - The function creates a bar plot showing the GQ distribution.
+        - The plot is saved as "popid_gq_distrib.png" in the specified 'out_dir_gq'.
+
+    Returns:
+        None: The function generates the GQ distribution plot but does not return any values.
+    """
     gq = OrderedDict(sorted(gq.items()))
     names = list(gq.keys())
     values = list(gq.values())
@@ -170,6 +325,25 @@ def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, 
             plt.close()
             
 def plot_smcpp(popid, summary_file, out_dir):
+    """
+    Plot the effective population size (Ne) trajectory using SMC++ summary output.
+
+    SMC++ is a tool for estimating demographic history from whole-genome sequencing data. This function reads
+    SMC++ summary output files and creates a plot to visualize the effective population size (Ne) over time.
+
+    Parameters:
+        popid (str): Identifier for the population.
+        summary_file (str): Path to the .csv SMC++ summary output file containing Ne and time information.
+        out_dir (str): Directory where the SMC++ plot will be saved.
+
+    Note:
+        - The summary_file should be in the format generated by SMC++ containing Ne and time information.
+        - The function creates a line plot showing the Ne trajectory over time.
+        - The plot is saved as "popid_smcpp_plot.png" in the specified 'out_dir'.
+
+    Returns:
+        None: The function generates the SMC++ plot but does not return any values.
+    """
     Ne=[]
     T=[]
     with open(summary_file) as input_file:
@@ -190,6 +364,35 @@ def plot_smcpp(popid, summary_file, out_dir):
 def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_time,
                                   xlim = None, ylim = None,
                                   max_v = -10**6, nb_plots_max = 10, title="Dadi pop. estimates"):
+    """
+    Plot demographic scenarios estimated using Dadi for a population with three epochs of size changes.
+
+    Dadi is a tool for inferring demographic history from genetic data. This function takes a list of Dadi output values,
+    extracts demographic parameters, and creates a plot to visualize population size changes over time.
+
+    Parameters:
+        dadi_vals_list (list): List of Dadi output values, where each element is structured as [iter_number, log_likelihood, [nuB, nuF, TB, TF], theta].
+        name_pop (str): Name or identifier for the population.
+        out_dir (str): Directory where the Dadi plot will be saved.
+        mu (float): Mutation rate per site per generation.
+        L (int): Total number of sites.
+        gen_time (float): Generation time in years.
+        xlim (tuple): Tuple specifying the x-axis limits (optional).
+        ylim (tuple): Tuple specifying the y-axis limits (optional).
+        max_v (int): Maximum value for the log-likelihood (optional, default is -10^6).
+        nb_plots_max (int): Maximum number of scenarios to plot (optional, default is 10).
+        title (str): Title for the Dadi plot (optional, default is "Dadi pop. estimates").
+
+    Note:
+        - The dadi_vals_list should contain Dadi output values, where each element is structured as described.
+        - This function is specific to demographic scenarios with three epochs of population size changes.
+        - The plot shows population size (individuals) over time (years) for different scenarios.
+        - The best-scoring scenario is shown in red, and other scenarios are shown in dashed lines.
+        - The plot is saved as "name_pop_dadi_plot.png" in the specified 'out_dir'.
+
+    Returns:
+        None: The function generates the Dadi plot but does not return any values.
+    """
     best_model = None
     scenarios = {}
     for elem in dadi_vals_list:
@@ -234,8 +437,11 @@ def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_ti
     plt.savefig(out_dir+"/"+name_pop+"_dadi_plot.png")
     plt.close()
 
-def Gplot(T_scaled_gen,gen_time,dadi_vals_list,name_pop,out_dir,popid, summary_file,summary_file2, max_v = -10**6, title="estimates",):
-    import dadi
+def Gplot(T_scaled_gen,gen_time,dadi_vals_list,name_pop,out_dir,popid,
+          summary_file,summary_file2, max_v = -10**6, title="estimates"):
+    """
+    To generate a combined plot of all methods. Experimental.
+    """
     with open(T_scaled_gen) as fo:
         line = fo.readline()
         fo.close()
@@ -297,8 +503,32 @@ def Gplot(T_scaled_gen,gen_time,dadi_vals_list,name_pop,out_dir,popid, summary_f
     plt.ylabel('Na')
     plt.savefig(out_dir+popid+"_all_plot.png")
     plt.close()
+    
+def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9):
+    """
+    Perform Principal Component Analysis (PCA) on genetic data and generate plots and cluster information.
 
-def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir):
+    This function performs PCA on genetic data using PLINK eigenvec and eigenval files, plots the first two principal components,
+    performs k-means clustering, and generates informative plots and cluster information.
+
+    Parameters:
+        plink_eigenvec (str): Path to the PLINK eigenvec file containing PCA results.
+        plink_eigenval (str): Path to the PLINK eigenval file containing eigenvalues.
+        popid (str): Identifier for the population or dataset.
+        out_dir (str): Directory where output files and plots will be saved.
+        n_clusters (int): Number of clusters for k-means clustering (default is 9).
+
+    Returns:
+        None: The function generates various plots and cluster information but does not return any values.
+
+    Note:
+        - The function assumes that PLINK eigenvec and eigenval files are generated as part of PCA analysis.
+        - It performs k-means clustering on the first two principal components.
+        - Cluster information is saved in a CSV file named "popid_kn_clusters.csv".
+        - Various plots, including PCA scatter plots and explained variance bar plot, are saved in the 'out_dir'.
+    """
+    if n_clusters is None:
+        raise ValueError("Error: Please set a number of clusters with --n_clust_kmeans.")
     # Load eigenvectors and eigenvalues
     with open(plink_eigenvec) as input:
         for line in input:
@@ -313,8 +543,50 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir):
     # Determine the number of components
     num_components = eigenvectors.shape[1]
 
+    # Extract sample names from the eigenvec file
+    with open(plink_eigenvec) as input:
+        sample_names = [line.split()[1] for line in input if not line.startswith("#")]
+    
     # Calculate the percentage of variance explained by each PC
     variance_explained = (eigenvalues / np.sum(eigenvalues)) * 100
+
+    # Create a DataFrame for plotting
+    pca_df = pd.DataFrame({
+        'PC1': eigenvectors[:, 0],
+        'PC2': eigenvectors[:, 1],
+        'Sample': sample_names,
+    })
+
+    # Perform k-means clustering
+    print(f"Performing kmeans clustering with k={n_clusters} clusters...")
+    kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+    pca_df['Cluster'] = kmeans.fit_predict(eigenvectors[:, :2])  # Using only the first two PCs for clustering
+
+    # Group the data by cluster
+    cluster_groups = pca_df.groupby('Cluster')
+
+    # Iterate over each cluster
+    print("Sorted by cluster:")
+    for cluster_id, cluster_data in cluster_groups:
+        print(f"Cluster {cluster_id}:")
+
+        # Iterate over each sample in the cluster
+        for sample, row in cluster_data.iterrows():
+            print(f"Sample: {row['Sample']}, Cluster: {row['Cluster']}")
+
+        print()  # Add an empty line to separate clusters
+
+    # Iterate over each sample
+    print("Sorted by sample:")
+    # Open a CSV file for writing
+    with open(f"{out_dir}/{popid}_k{n_clusters}_clusters.csv", 'w') as csv_file:
+        csv_file.write('Sample,Cluster\n')  # Write the header
+        # Iterate over each sample
+        for sample, row in pca_df.iterrows():
+            sample_name = row['Sample']
+            cluster = row['Cluster']
+            print(f"Sample: {sample_name}, Cluster: {cluster}")
+            csv_file.write(f'{sample_name},{cluster}\n')  # Write each sample and its cluster to the file
 
     # Plot the first two principal components
     plt.figure(figsize=(8, 6))
@@ -323,6 +595,39 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir):
     plt.xlabel(f'PC1 ({variance_explained[0]:.2f}%)')
     plt.ylabel(f'PC2 ({variance_explained[1]:.2f}%)')
     plt.savefig(out_dir+"/"+popid+"_PCA.png")
+
+    # Create a Plotly scatter plot with different symbols for each cluster
+    symbol_sequence = range(1,10)  # Define symbol sequence
+
+    # Map cluster number to symbol
+    pca_df['Symbol'] = pca_df['Cluster'].apply(lambda x: symbol_sequence[x % len(symbol_sequence)])
+
+    fig = px.scatter(pca_df, x='PC1', y='PC2', color='Cluster', symbol='Symbol',
+                    title=f'PCA with k={n_clusters} Clusters: PC1 vs PC2 ({num_components} components)',
+                    labels={'PC1': f'PC1 ({variance_explained[0]:.2f}%)', 'PC2': f'PC2 ({variance_explained[1]:.2f}%)'},
+                    template='plotly_white', text='Sample')  # Add 'text' parameter for sample names
+
+    # Add convex hulls
+    for i in range(n_clusters):
+        group = pca_df[pca_df['Cluster'] == i]
+        points = group[['PC1', 'PC2']].values
+
+        # Check if there are at least 3 points to form a convex hull
+        if len(points) > 2:
+            hull = ConvexHull(points)
+            for simplex in hull.simplices:
+                fig.add_trace(go.Scatter(x=points[simplex, 0], y=points[simplex, 1], mode='lines',
+                                         line=dict(color=px.colors.qualitative.Set1[i % len(px.colors.qualitative.Set1)]),
+                                         showlegend=False))
+        else:
+            print(f"Cluster {i} has fewer than 3 points; skipping convex hull.")
+
+    # Update the layout
+    fig.update_traces(marker=dict(size=10), selector=dict(type='scatter'))
+    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(showlegend=False)
+    # Save the interactive HTML plot
+    fig.write_html(out_dir+"/"+popid+"_PCA_interactive.html")
 
     # Bar plot of explained variance
     plt.figure(figsize=(10, 6))

@@ -1,12 +1,38 @@
 """
-build_sfs (n, folded,sfs_ini, line='', sfs=[]) : compute the sfs
-transform_sfs(sfs, n, folded) : transforms the sfs
-"""
+Site Frequency Spectrum (SFS) Module of DemInfHelper.
 
+This module provides functions for computing and transforming the Site Frequency Spectrum (SFS) from genetic data.
+The SFS is a fundamental concept in population genetics, representing the distribution of allele frequencies within a population.
+
+Functions:
+- build_sfs(n, folded, sfs_ini, line=[], sfs=[], pos_ind=None): Compute the SFS based on genetic data.
+- transform_sfs(sfs, n, folded): Transform the SFS, folded or unfolded.
+
+Usage:
+1. Import this module: `import sfs`
+2. Use the functions to compute and manipulate SFS data.
+"""
 import itertools
 import numpy as np
 
 def build_sfs(n, folded, sfs_ini, line=[], sfs=[], pos_ind = None):
+    """
+    Compute the Site Frequency Spectrum (SFS).
+
+    This function computes the Site Frequency Spectrum (SFS) based on the provided parameters and genetic data.
+    It can either initialize an empty SFS or update an existing one based on the input VCF line and other parameters.
+
+    Parameters:
+    - n (int): The number of samples.
+    - folded (bool): True if the SFS should be folded, False for unfolded.
+    - sfs_ini (bool): True to initialize an empty SFS, False to update an existing one.
+    - line (list): A list representing a VCF line split into fields.
+    - sfs (list): A list containing the initial SFS.
+    - pos_ind (list): Positions for each sample in the VCF.
+
+    Returns:
+    - sfs (list): The updated Site Frequency Spectrum.
+    """
     if sfs_ini:
         if folded:
             return [0]+[0] * n
@@ -27,8 +53,23 @@ def build_sfs(n, folded, sfs_ini, line=[], sfs=[], pos_ind = None):
 
 
 def transform_sfs(sfs, n, folded):
+    """
+    Transform the Site Frequency Spectrum (SFS).
+
+    This function transforms the Site Frequency Spectrum (SFS) using a specific formula, which depends on
+    whether the SFS is folded or unfolded.
+
+    Parameters:
+    - sfs (list): The original Site Frequency Spectrum.
+    - n (int): The number of samples.
+    - folded (bool): True if the SFS is folded, False if unfolded.
+
+    Returns:
+    - sfs_trans (list): The transformed SFS.
+
+    Note: The function applies a formula to transform the SFS and returns the transformed SFS.
+    """
     #to transform the vcf
-    #formula from Elise thesis
     if folded:
         sfs_trans = []
         for i in range(1,len(sfs)+1):

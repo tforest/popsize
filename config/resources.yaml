@@ -1,0 +1,11 @@
+# Ressources for rules for popsize module
+# stairwayplot2
+swp2:
+  threads: 1
+  mem: 8000
+
+# SMC++
+smcpp:
+  threads: 15
+  mem: 14000
+
