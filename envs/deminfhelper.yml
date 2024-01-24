@@ -1,9 +1,10 @@
-name: testy
+name: deminfhelper
 channels:
   - cyclus
   - bioconda
-  - conda-forge
+  - r
   - defaults
+  - conda-forge
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_kmp_llvm
@@ -17,7 +18,7 @@ dependencies:
   - brotli-bin=1.0.9=h5eee18b_7
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.19.1=h5eee18b_0
-  - ca-certificates=2023.12.12=h06a4308_0
+  - ca-certificates=2023.11.17=hbcca054_0
   - cairo=1.18.0=h3faef2a_0
   - chrpath=0.16=h7f98852_1002
   - contourpy=1.0.5=py311hdb19cb5_0
@@ -40,6 +41,7 @@ dependencies:
   - gdbm=1.18=hd4cb3f1_4
   - gdk-pixbuf=2.42.10=h6c15284_3
   - gettext=0.21.1=h27087fc_0
+  - ghostscript=10.02.1=h59595ed_0
   - giflib=5.2.1=h0b41bf4_3
   - glib=2.78.3=hfc55251_0
   - glib-tools=2.78.3=hfc55251_0
