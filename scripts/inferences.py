@@ -183,6 +183,20 @@ def run_stairwayplot2(popid, out_dir, path_to_stairwayplot2):
     cmd2 = "".join([ "bash ", out_dir, popid, ".blueprint.sh"])
     os.system(cmd2)
 
+def run_msmc2_process(args):
+    contig, individual, vcf, out_dir, deminfhelper_directory = args
+    individual_vcf = f"{out_dir}{contig}_{individual}.vcf.gz"
+    # construct and execute the command as in the original function
+    cmd = " ".join(["bcftools view -s", individual, "-t", contig, vcf,
+                    "| bcftools query - -f '%INFO/DP\n' | awk '{ sum += $1 } END { print sum/NR }' |",
+                    "{ read value && minDP=$(echo \"$value / 2\" | bc) && maxDP=$(echo \"$value * 2\" | bc);};",
+                    "bcftools view -g ^miss -t", contig, "-s", individual, vcf,
+                    "| vcftools --vcf - --minDP $minDP --maxDP $maxDP --recode --stdout | gzip -c >",
+                    individual_vcf, ";",
+                    "python3", deminfhelper_directory+"/scripts/generate_multihetsep.py", individual_vcf,
+                    ">", out_dir+contig+"_"+individual+"_msmc_input.txt"])
+    subprocess.run(cmd, shell=True, check=True)
+    
 def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
     """
     Runs MSMC2 analysis on given contigs with specified parameters.
@@ -212,41 +226,24 @@ def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
     - Requires bcftools, vcftools, and MSMC2 to be installed and accessible.
     """
     if len(contigs) == 0:
-        print("Error! No contigs to use! Make sure the threshold matches your data.")
-    deminfhelper_directory = os.path.dirname(os.path.abspath(__file__))
-
-    # Get the available CPUs
-    available_cpus = list(range(multiprocessing.cpu_count()))
-    # Choose the first 'num_cpus' CPUs
-    cpu_affinity = available_cpus[:num_cpus]
+        raise ValueError("Error! No contigs to use! Make sure the threshold matches your data.")
     
-    processes = []  # List to store Process objects
+    deminfhelper_directory = os.path.dirname(os.path.abspath(__file__))
+    num_cpus = num_cpus or multiprocessing.cpu_count()
 
+    pool_args = []
     for contig in contigs:
-        # Process each contig
-        cmd2 = " ".join(["bcftools", "view", "-t", contig, vcf, "|",
-                         "bcftools", "query", "-", "-f", "'%INFO/DP\n'", "|",
-                         "awk '{ sum += $1 } END { print sum/NR }' | ",
-                         '{ read value && minDP=$(echo "$value / 2" | bc) && maxDP=$(echo "$value * 2" | bc);};',
-                         "bcftools view -g ^miss -t", contig, vcf,
-                         "|vcftools --vcf - --minDP $minDP --maxDP $maxDP",
-                         "--recode --stdout | gzip -c >", out_dir+contig+".vcf.gz ;",
-                         "python3", deminfhelper_directory+"/generate_multihetsep.py",
-                         out_dir+contig+".vcf.gz", ">", out_dir+contig+"_msmc_input.txt"])
-        print(cmd2)
-        p = multiprocessing.Process(target=subprocess.run, args=(cmd2,), kwargs={'shell': True, 'check': True})
-        processes.append(p)
-        p.start()
-    # Wait for all processes to finish
-    for process in processes:
-        process.join()
+        for individual in pop_ind:
+            pool_args.append((contig, individual, vcf, out_dir, deminfhelper_directory))
+
+    with multiprocessing.Pool(num_cpus) as pool:
+        pool.map(run_msmc2_process, pool_args)
 
     #List only non-empty files for msmc2
     kept_files = [f for f in os.listdir(out_dir) if os.path.isfile(os.path.join(out_dir, f)) and f.endswith("_msmc_input.txt") and os.path.getsize(os.path.join(out_dir, f)) > 0]
 
     if len(kept_files) == 0:
         raise ValueError("Error! There are no usable file for msmc2, all inputs are empty!")
-
     # Process each non-empty file
     for filename in kept_files:
         with open(os.path.join(out_dir, filename), 'r') as input_file, open(os.path.join(out_dir, filename + "_temp"), 'w') as output_file:
@@ -254,10 +251,10 @@ def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
                 # Check if matches the pattern checked by msmc2
                 pattern = r"^[A-Za-z0-9_.]+\s\d+\s\d+\s[ACTG01\?,]+$"
                 replace_pattern = r"[^A-Za-z0-9_.\sACTG01\?,]"
-                # count nb of diff. alleles 
+                # count nb of diff. alleles
                 nb_polyall = len(set(line.strip().split("\t")[-1]))
-                if nb_polyall == 1 or nb_polyall > 2 :
-                    # skip polyallelic sites
+                if nb_polyall == 1:
+                    # skip monomorphic sites
                     continue
                 if len(line.strip().split("\t")[-1]) > 2:
                     # in MSMC format, the 4th col represents all the alleles of the different samples
@@ -272,18 +269,22 @@ def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
                 else:
                     # if line is correct write it as is
                     output_file.write(line)
-         
+
         # Replace the original file with the corrected one
         os.replace(os.path.join(out_dir, filename + "_temp"), os.path.join(out_dir, filename))
-        
         # Print information or run MSMC2 if needed
         print(f"Processed {filename}.")
 
-    cmd5 = " ".join(["msmc2_Linux", ' '.join([os.path.join(out_dir, f) for f in kept_files]), "-o", out_dir+popid+"_msmc2"])
+    #List only non-empty files for msmc2 after filtering  
+    kept_files = [f for f in os.listdir(out_dir) if os.path.isfile(os.path.join(out_dir, f)) and f.endswith("_msmc_input.txt") and os.path.getsize(os.path.join(out_dir, f)) > 0]
 
+    if len(kept_files) == 0:
+        raise ValueError("Error! There are no usable file for msmc2, all inputs are empty!")
+
+    cmd5 = " ".join(["msmc2_Linux", ' '.join([os.path.join(out_dir, f) for f in kept_files]), "-o", out_dir+popid+"_msmc2"])
     print(cmd5)
     with open(out_dir+"/"+popid+"_msmc2.log", 'w') as log:
-        subprocess.run(cmd5, stdout=log, shell=True)
+        subprocess.run(cmd5, stdout=log, shell=True)           
 
 def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, p="10+22*2+4+6", num_cpus=4):
     """
@@ -396,7 +397,7 @@ def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, p="10+
     for process in processes:
         process.wait()
     cmd3 = " ".join(["cat", out_dir+"*.psmc >", out_dir+'/'+popid+"_combined.psmc.final", ";"
-    "psmc_plot.pl", "-g", gen_time, "-x", "10", "-u", mu, "-M '"+",".join(pop_ind)+"'", popid, out_dir+'/'+popid+"_combined.psmc.final" ,";",
+    "psmc_plot.pl", "-g", gen_time, "-x", "0", "-u", mu, "-M '"+",".join(pop_ind)+"'", popid, out_dir+'/'+popid+"_combined.psmc.final" ,";",
     "mv", popid+".*.par", out_dir, "; mv", popid+"*.eps", out_dir])
     print(cmd3)
     with open(out_dir+popid+"_psmc_combine.log", 'w') as log:

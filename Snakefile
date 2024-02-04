@@ -92,7 +92,7 @@ rule smcpp:
         smcpp_summary = "results/{refGenome}/popsize/output_smcpp/{prefix}.final.json"
     conda:
         "envs/smcpp.yml"
-    resources: mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem']
+    resources: mem_mb = lambda wildcards, attempt: attempt * resources['smcpp']['mem']
     threads: resources['smcpp']['threads']
     shell:
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --cpus {threads} --smcpp ;"+ \
@@ -139,6 +139,8 @@ rule msmc2:
         vcf = "results/{refGenome}/{prefix}_raw.vcf.gz"
     output:
         msmc2_output = "results/{refGenome}/popsize/output_msmc2/{prefix}_msmc2.final.txt"
+    resources: mem_mb = lambda wildcards, attempt: attempt * resources['msmc2']['mem']
+    threads: resources['msmc2']['threads']
     conda:
         "envs/deminfhelper.yml"
     shell:

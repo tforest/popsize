@@ -53,6 +53,18 @@ from sklearn.cluster import KMeans
 from scipy.spatial import ConvexHull
 import plotly.graph_objects as go
 
+def plot_straight_x_y(x,y):
+    x_1 = [x[0]]
+    y_1 = []
+    for i in range(0, len(y)-1):
+        x_1.append(x[i])
+        x_1.append(x[i])
+        y_1.append(y[i])
+        y_1.append(y[i])
+    y_1 = y_1+[y[-1],y[-1]]
+    x_1.append(x[-1])
+    return x_1, y_1
+
 def plot_sfs(sfs, plot_title, output_file):
     """
     Plot the Site Frequency Spectrum (SFS).
@@ -87,7 +99,7 @@ def plot_sfs(sfs, plot_title, output_file):
     plt.savefig(output_file)
     plt.close()
 
-def plot_stairwayplot2(popid, summary_file, out_dir):
+def plot_stairwayplot2(popid, summary_file, out_dir, xlog=True, ylog=True):
     """
     Generate a stairway plot from summary data.
 
@@ -119,16 +131,20 @@ def plot_stairwayplot2(popid, summary_file, out_dir):
             Ne3.append(float(line.split('\t')[8]))
             T.append(float(line.split('\t')[5]))
             line = input_file.readline()
-    plt.plot(T,Ne_med,color="blue")
+    plt.plot(T,Ne_med,color="red")
     plt.plot(T,Ne1,color="grey")
     plt.plot(T,Ne3,color="grey")
-    plt.title(popid)
+    plt.title(fr"[StairwayPlot2] {popid}")
+    if xlog:
+        plt.xscale("log")
+    if ylog:
+        plt.yscale("log")
     plt.xlabel('Time (in years)')
     plt.ylabel('Ne')
     plt.savefig(out_dir+popid+"_stw_plot.png")
     plt.close()
 
-def plot_msmc2(popid, summary_file, mu, gen_time, out_dir):
+def plot_msmc2(popid, summary_file, mu, gen_time, out_dir, xlog=True, ylog=True):
     """
     Generate a plot from MSMC2 summary data.
 
@@ -164,8 +180,15 @@ def plot_msmc2(popid, summary_file, mu, gen_time, out_dir):
     # Pop Size
     scaled_pop = 1/df['lambda']
     pop_size_change = scaled_pop / (2*mu)
-    plt.plot(scaled_left_bound, pop_size_change,color="blue")
-    plt.title(popid)
+    
+    scaled_left_bound, pop_size_change = plot_straight_x_y(list(scaled_left_bound), list(pop_size_change))
+
+    plt.plot(scaled_left_bound, pop_size_change,color="red")
+    if xlog:
+        plt.xscale("log")
+    if ylog:
+        plt.yscale("log")
+    plt.title(fr"[MSMC2] {popid} $\mu$={mu} gen.t={gen_time}")
     plt.xlabel('Time (in years)')
     plt.ylabel('Ne')
     plt.savefig(out_dir+popid+"_msmc2_plot.png")
@@ -324,7 +347,7 @@ def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, 
             pdf.savefig()
             plt.close()
             
-def plot_smcpp(popid, summary_file, out_dir):
+def plot_smcpp(popid, summary_file, out_dir, xlog=True, ylog=True):
     """
     Plot the effective population size (Ne) trajectory using SMC++ summary output.
 
@@ -354,15 +377,20 @@ def plot_smcpp(popid, summary_file, out_dir):
             Ne.append(float(line.split(',')[2]))
             T.append(float(line.split(',')[1]))
             line = input_file.readline()
-    plt.plot(T,Ne,color="blue")
-    plt.title(popid)
+    T, Ne = plot_straight_x_y(T,Ne)
+    plt.plot(T,Ne,color="red")
+    if xlog:
+        plt.xscale("log")
+    if ylog:
+        plt.yscale("log")
+    plt.title(fr"[SMC++] {popid}")
     plt.xlabel('Time (in years)')
     plt.ylabel('Ne')
     plt.savefig(out_dir+popid+"_smcpp_plot.png")
     plt.close()
     
 def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_time,
-                                  xlim = None, ylim = None,
+                                  xlim = None, ylim = None, xlog = True, ylog = True,
                                   max_v = -10**6, nb_plots_max = 10, title="Dadi pop. estimates"):
     """
     Plot demographic scenarios estimated using Dadi for a population with three epochs of size changes.
@@ -427,13 +455,17 @@ def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_ti
     best_x = lines_x[0]
     best_y = lines_y[0]
     plt.plot(best_x, best_y, 'r-', lw=2)
+    if xlog:
+        plt.xscale("log")
+    if ylog:
+        plt.yscale("log")
     plt.ylabel("Individuals (Na)")
     plt.xlabel("Time (years)")
+    plt.title(fr"[Dadi] {name_pop} $\mu$={mu} gen.t={gen_time}")
     if xlim:
         plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
-    plt.title(title)
     plt.savefig(out_dir+"/"+name_pop+"_dadi_plot.png")
     plt.close()
 
