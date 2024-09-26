@@ -11,7 +11,7 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
 
 ### Key Features
 
-1. **Modularity:** The `popsize` module integrates demographic inference tools, offering flexibility and adaptability to different datasets.
+1. **Modularity:** The `popsize` module integrates a selection of population size inference approaches, offering flexibility and adaptability to different datasets and situations.
 2. **Transparency:** Parameters used by the integrated tools are transparent, enabling users to understand and control computational aspects.
 3. **Statistical Insights:** The module includes essential statistics such as Site Frequency Spectrum (SFS) and Principal Component Analysis (PCA), aiding in population structure evaluation.
 
