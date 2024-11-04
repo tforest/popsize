@@ -1,4 +1,5 @@
 
+
 # popsize module for snpArcher
 
 ## Overview
@@ -54,29 +55,36 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
 ## Usage
 
 1. **Installation:**
-   - Clone the repository of the `popsize` module under `snpArcher/workflow/modules/`:
+   - Get snpArcher. You can clone the repository straight from Github to get the latest version, however, popsize has been tested for the snapshot of August, 15th, 2024. So we recommend to get this one for running the test dataset:
+     ```bash
+     wget https://github.com/harvardinformatics/snpArcher/archive/8a0921d9dd094a57570c70815453a93da5a2421d.zip
+     # Rename the directory to make it more convenient
+     mv snpArcher-8a0921d9dd094a57570c70815453a93da5a2421d snpArcher
+     ```
+	
+   - Then unzip it and clone the repository of the `popsize` module under `snpArcher/workflow/modules/`:
 
      ```bash
      cd snpArcher/workflow/modules/
      git clone https://github.com/tforest/popsize.git
      ```
 
-2. **Configuration:**
-   - Adjust settings in the `config.yaml` file in the `config` directory to fit your needs.
-   - Important Configurations to Set in `config.yaml`:
+2. **Configuration of the popsize module:**
+   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/config.yaml` file to fit your needs.
+   - Important settings to define in `config.yaml`:
 
      ```yaml
      ## Popsize options
      # popsize modules to use for inference; can be : dadi, swp2, msmc2, psmc, smcpp. Specify multiple tools comma-separated: "dadi, swp2, psmc" for example
-     popsize_tools: "dadi"
+     popsize_tools: "dadi, swp2, msmc2, psmc, smcpp"
      # specify generation time for the studied species.
-     gen_time: 2
+     gen_time: 5.6
      # specify the average per site mutation rate 
-     mut_rate: 3e-8
+     mut_rate: 5e-9
      # specify whether to use folded SFS or not. 
      folded: True
      # select the number of runs dadi is executing for its optimization phase 
-     dadi_optimizations: 100
+     dadi_optimizations: 1000
      ```
 
 3. **Integration with snpArcher:**
@@ -92,16 +100,61 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
      use rule * from popsize as popsize_*
      ```
 
+4. **Configuration of snpArcher:**
+
+- Edit the config/config.yaml file on this lines:
+
+ ```yaml
+samples: "config/samples.csv"
+final_prefix: "picus_viridis"
+bigtmp: "/path/to/big/tmp/"
+```
+ - Create a config/samples.csv file containing information about your samples, for example:
+ ```csv
+BioSample,LibraryName,Run,refGenome,BioProject,lat,long
+SAMN38508702,JF5345,SRR27195338,GCA_033816785.1,PRJNA1027323,45.06017809409504,3.9699892711638065
+SAMN38508701,JF5325,SRR27195328,GCA_033816785.1,PRJNA1027323,46.77012124990864,1.5199570846552257
+SAMN38508699,JF5258,SRR27195330,GCA_033816785.1,PRJNA1027323,47.53014126080718,7.480021457672387
+SAMN38508698,JF5191,SRR27195331,GCA_033816785.1,PRJNA1027323,48.66014527662619,2.649957084655226
+SAMN38508697,JF5180,SRR27195332,GCA_033816785.1,PRJNA1027323,48.92013747575708,2.799967813491419
+SAMN38508696,MO1993190,SRR27195333,GCA_033816785.1,PRJNA1027323,47.67014088330744,-1.909978542327613
+SAMN38508695,MO1991186,SRR27195334,GCA_033816785.1,PRJNA1027323,48.740152121316086,2.1700321865085805
+SAMN38508694,MO1991185,SRR27195335,GCA_033816785.1,PRJNA1027323,45.930167901473105,6.930021457672388
+SAMN38508693,MO19711091,SRR27195339,GCA_033816785.1,PRJNA1027323,47.5501050000613,-0.1099570846552259
+SAMN38508692,MO19711090,SRR27195341,GCA_033816785.1,PRJNA1027323,48.70013808027695,2.130010728836193 
+```
+
+*This is an example dataset using Picus viridis samples. (Forest et al., 2024)*
+
+You can find more information about the sample sheet in [snpArcher documentation](https://snparcher.readthedocs.io/en/latest/setup.html#creating-a-sample-sheet).
+ - Edit the profiles/slurm/config.yaml file on this lines:
+
+ ```yaml
+latency-wait: 300 # Wait N seconds for output files due to latency
+retries: 3 # Retry jobs N times.
+mem_mb: attempt * 16000
+runtime: 720 # In minutes, here 12h
+slurm_partition: YOUR_PARTITION
+```
+     
 4. **Execution:**
-   - Run the snpArcher workflow with the integrated `popsize` module. You can execute on your current snpArcher configuration the `popsize` steps only by running something like:
+
+- Create a conda env with snakemake>=8.20.
+
+ - Once you activated the conda environment, while in snpArcher/ top directory, run snpArcher until the end of the process. (ie. creation of the VCFs):
 
      ```snakemake
-     snakemake --cores 16 --use-conda --conda-frontend mamba --profile ./profiles/slurm --snakefile workflow/Snakefile popsize
+     snakemake --workflow-profile profiles/slurm
+     ```
+
+- Once snpArcher executed properly, you can run popsize using snpArcher output:
+     ```snakemake
+     snakemake --workflow-profile profiles/slurm --forcerun popsize_all
      ```
 
 ## Dependencies
 
-- Snakemake 7.1x
+- Snakemake 8.20.x
 
 
 ## Contribution
@@ -125,3 +178,6 @@ Popsize integrated tools rely on these published works:
 - Schiffels, S., and K. Wang. 2020. "MSMC and MSMC2: The Multiple Sequentially Markovian Coalescent." In Statistical Population Genomics, edited by J. Y. Dutheil, 147–166. Methods in Molecular Biology, Springer US, New York, NY.
 - Terhorst, J., J. A. Kamm, and Y. S. Song. 2017. "Robust and scalable inference of population history from hundreds of unphased whole genomes." Nat Genet 49: 303–309.
 - Liu, X., and Y.-X. Fu, 2020 Stairway Plot 2: demographic history inference with folded SNP frequency spectra. Genome Biology 21: 280.
+
+The example dataset is taken from this study:
+- Forest, T., Achaz, G., Marbouty, M., Bignaud, A., Thierry, A., Koszul, R., Milhes, M., Lledo, J., Pons, J.M., & Fuchs, J. (2024). Chromosome-level genome assembly of the European green woodpecker Picus viridis. _G3: Genes, Genomes, Genetics_, _14_(5), jkae042.
