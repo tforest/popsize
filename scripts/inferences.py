@@ -193,11 +193,11 @@ def run_msmc2_process(args):
                     "bcftools view -g ^miss -t", contig, "-s", individual, vcf,
                     "| vcftools --vcf - --minDP $minDP --maxDP $maxDP --recode --stdout | gzip -c >",
                     individual_vcf, ";",
-                    "python3", deminfhelper_directory+"/scripts/generate_multihetsep.py", individual_vcf,
+                    "python3", deminfhelper_directory+"/generate_multihetsep.py", individual_vcf,
                     ">", out_dir+contig+"_"+individual+"_msmc_input.txt"])
     subprocess.run(cmd, shell=True, check=True)
     
-def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
+def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, kwargs, num_cpus=None):
     """
     Runs MSMC2 analysis on given contigs with specified parameters.
 
@@ -260,12 +260,13 @@ def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
                     # in MSMC format, the 4th col represents all the alleles of the different samples
                     # as we work sample per sample and chr per chr, we fix this at 2, otherwise, possible inconsistency will make things crash
                     continue
+                # Dots in contig name cause crashes.
+                line = line.replace(".", "_")
                 if not re.match(pattern, line):
                     # Replace hyphens with underscores in the first field
                     if "*" in line:
                         line = line.replace("*", "")
                     line = re.sub(replace_pattern, "_", line)
-                    output_file.write(line)
                 else:
                     # if line is correct write it as is
                     output_file.write(line)
@@ -281,12 +282,18 @@ def msmc2(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, num_cpus=None):
     if len(kept_files) == 0:
         raise ValueError("Error! There are no usable file for msmc2, all inputs are empty!")
 
-    cmd5 = " ".join(["msmc2_Linux", ' '.join([os.path.join(out_dir, f) for f in kept_files]), "-o", out_dir+popid+"_msmc2"])
+    # Write kept_files to a text file
+    args_file = os.path.join(out_dir, 'kept_files.txt')
+    with open(args_file, 'w') as out_file:
+        for filename in kept_files:
+            out_file.write(os.path.join(out_dir, filename) + '\n')
+
+    cmd5 = f"cat {args_file} | xargs msmc2_Linux -o {out_dir}{popid}_msmc2 " + kwargs
     print(cmd5)
     with open(out_dir+"/"+popid+"_msmc2.log", 'w') as log:
         subprocess.run(cmd5, stdout=log, shell=True)           
 
-def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, p="10+22*2+4+6", num_cpus=4):
+def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, kwargs, num_cpus=4):
     """
     Executes the PSMC analysis for population size history inference.
 
@@ -320,6 +327,18 @@ def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, p="10+
     Note:
     - Requires bcftools, seqtk, gzip, and PSMC to be installed and accessible.
     """
+
+    if kwargs == None:
+        raise ValueError("You need to define kwargs for PSMC! Use --psmc_kwargs or define it in the config file.")
+
+    cmd1 = " ".join(["bcftools view --regions ", ','.join(contigs.keys()), "-I", vcf, " | bgzip -c > ", out_dir+"/psmc_input.vcf.gz"])
+    print(f"Creating PSMC VCF input file... \n{cmd1}")
+    os.system(cmd1)
+    
+    tabix_cmd = "tabix "+out_dir+"/psmc_input.vcf.gz"
+    print(f"Indexing VCF using {tabix_cmd}...")
+    os.system(tabix_cmd)
+        
     # Get the available CPUs
     available_cpus = list(range(multiprocessing.cpu_count()))
     # Choose the first 'num_cpus' CPUs
@@ -378,15 +397,31 @@ def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, p="10+
                 line = vcf_file.readline()
                 pbar.update(1)
             pbar.close()
-
+    else:
+        # if there's a ref genome, filter and keep only the contigs selected by user (using regex)
+        with open(ref_genome, "r") as ref_file:
+            with open(out_dir+"/psmc_input_genome.fa", "w") as ref_filtered:
+                    keep_sequence = False
+                    for line in ref_file:
+                        # Check if the line is a header (starts with ">")
+                        if line.startswith(">"):
+                            # Check if the header contains any of the contigs
+                            if  any(contig in line for contig in contigs):
+                                keep_sequence = True
+                                ref_filtered.write(line)  # Write the header
+                            else:
+                                keep_sequence = False
+                        elif keep_sequence:
+                            # Write sequence lines only if the current sequence should be kept
+                            ref_filtered.write(line)
     processes = []
     for sample in pop_ind:
-        cmd2 = " ".join(["bcftools consensus -I", vcf, "-s", sample, "-f", ref_genome, "|",
+        cmd2 = " ".join(["bcftools consensus -I", out_dir+"/psmc_input.vcf.gz", "-s", sample, "-f", out_dir+"/psmc_input_genome.fa", " - |",
         # read from stdin
         "seqtk seq -F '#'", "-", "|",
         "bgzip >", out_dir+"consensus_"+sample+".fq.gz", ";",
         "fq2psmcfa -q1", out_dir+"consensus_"+sample+".fq.gz", ">", out_dir+sample+"_diploid.psmcfa", ";"
-        "psmc -N30 -t15 -r5 -p '"+p+"' -o", out_dir+sample+".psmc", out_dir+sample+"_diploid.psmcfa"])
+        "psmc ", kwargs, " -o", out_dir+sample+".psmc", out_dir+sample+"_diploid.psmcfa"])
         print(cmd2)
         with open(out_dir+sample+"_consensus.log", 'w') as log:
             process = subprocess.Popen(cmd2, shell=True, stdout=log)

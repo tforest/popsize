@@ -65,6 +65,66 @@ def plot_straight_x_y(x,y):
     x_1.append(x[-1])
     return x_1, y_1
 
+def barplot_sfs(sfs, output_file, xlab = "Allele frequency", ylab = "SNP counts",
+                folded=True, title = "SFS", transformed = False, normalized = False):
+    sfs_val = []
+    n = len(sfs)
+    sum_sites = sum(sfs)
+    for k, ksi in enumerate(sfs):
+        # k does not starts at 0 but 1
+        k = k+1
+        if transformed:
+            ylab = r'$ \phi_i $'
+            if folded:
+                val = ((k*(2*n - k)) / (2*n))*(ksi)
+            else:
+                val = ksi * k
+        else:
+            val = ksi
+        sfs_val.append(val)
+
+        if not transformed and not normalized:
+            ylab = r'$ \eta_i $'
+       
+    #terminal case, same for folded or unfolded
+    if transformed:
+        last_bin = sfs[n-1] * n/2
+    else:
+        last_bin = sfs[n-1]
+    sfs_val[-1] = last_bin
+    if normalized:
+        ylab = r'$ \phi_i $'
+        sum_val = sum(sfs_val)
+        for k, sfs_bin in enumerate(sfs_val):
+            sfs_val[k] = sfs_bin / sum_val
+
+    title = title+" (n="+str(len(sfs_val))+") [folded="+str(folded)+"]"+" [transformed="+str(transformed)+"]"
+    print("SFS =", sfs)
+    if folded:
+        xlab = "Minor allele frequency"
+    if transformed:
+        print("Transformed SFS ( n =",len(sfs_val), ") :", sfs_val)
+        #plt.axhline(y=1/n, color='r', linestyle='-')
+    else:
+        if normalized:
+            # then plot a theoritical distribution as 1/i
+            expected_y = [1/(2*x+1) for x in list(sfs.keys())]
+            print(sum(expected_y))
+            #plt.plot([x for x in list(sfs.keys())], expected_y, color='r', linestyle='-')
+            #print(expected_y)
+            
+    x = [x+1 for x in range(len(sfs))]
+    y = sfs_val
+    # plt.xticks(x)
+    plt.bar(x, y)
+    plt.ylabel(ylab)
+    plt.xlabel(xlab)
+    plt.title(title)
+    plt.savefig(output_file)
+    plt.close()
+    #plt.show()
+
+
 def plot_sfs(sfs, plot_title, output_file):
     """
     Plot the Site Frequency Spectrum (SFS).
@@ -196,7 +256,7 @@ def plot_msmc2(popid, summary_file, mu, gen_time, out_dir, xlog=True, ylog=True)
 
 def plot_psmc(popid, sample_names, psmc_output_file,
               plot_output_prefix, gen_time, mut_rate,
-              out_dir, x=0):
+              out_dir, kwargs):
     """
     Generate a PSMC plot from PSMC output.
 
@@ -224,7 +284,7 @@ def plot_psmc(popid, sample_names, psmc_output_file,
     """
     # x: minimum generations, 0 for auto [10000]
     # R: DO not remove temporary files
-    cmd = " ".join(["psmc_plot.pl -g", str(gen_time), "-x", str(x),
+    cmd = " ".join(["psmc_plot.pl -g", str(gen_time), str(kwargs),
                     "-u", str(mut_rate), "-R", plot_output_prefix, psmc_output_file])
     os.system(cmd)
     print(cmd)
@@ -254,15 +314,16 @@ def plot_distrib_gq(popid, gq, out_dir_gq):
     Returns:
         None: The function generates the GQ distribution plot but does not return any values.
     """
+
     gq = OrderedDict(sorted(gq.items()))
     names = list(gq.keys())
     values = list(gq.values())
     plt.figure(figsize = [10, 5])
     plt.bar(range(len(gq)), values, tick_label=names)
-    plt.title(popid + " GQ distribution")
-    plt.xlabel('GQ')
+    plt.title(f"{popid} GQ distribution")
+    plt.xlabel("GQ")
     plt.ylabel('Numbre of sites')
-    plt.savefig(out_dir_gq+popid + "_gq_distrib.png")
+    plt.savefig(f"{out_dir_gq}/{popid}_GQ_distrib.png")
     plt.close()
 
 def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, filter_prefix=None, nb_bins=None):

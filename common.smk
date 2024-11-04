@@ -1,8 +1,9 @@
 import gzip
 from yaml import safe_load
 
-with open(config["resource_config"], "r") as f:
-    resources = safe_load(f)
+#with open(config["resource_config"], "r") as f:
+#    resources = safe_load(f)
+#print(resources)
 
 def build_deminfhelper_config(results_folder, vcf_file, prefix, output, global_config, module_config):
     # parse template

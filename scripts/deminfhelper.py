@@ -87,7 +87,7 @@ def parse_args():
     #mandatory arguments
     parser.add_argument("--config_file", help="path to the configuration file")
     #optional arguments
-    parser.add_argument("--cpus", help="# CPU threads to use",  type=int)
+    parser.add_argument("--cpus", help="# CPU threads to use",  type=int, default=1)
     #SFS
     parser.add_argument("--sfs", help = "to compute the sfs", action = "store_true")
     parser.add_argument("--sfs_transformed", help = "to normalize the sfs", action = "store_true")
@@ -101,9 +101,12 @@ def parse_args():
     #MSMC2
     parser.add_argument("--msmc2", help = "to run msmc2", action = "store_true")
     parser.add_argument("--plot_msmc2", help = "to plot msmc2", action = "store_true")
+    parser.add_argument("--msmc2_kwargs", help="Optional args for MSMC2 (list separated by ';', eg. --msmc2_kwarg -i 25; -p 1*2+25*1+1*2+1*3 and so on).",  type=str)
     #PSMC
     parser.add_argument("--psmc", help = "to run PSMC", action = "store_true")
     parser.add_argument("--plot_psmc", help = "to plot psmc inference", action = "store_true")
+    parser.add_argument("--plot_psmc_kwargs", help = "Params to pass to plot_psmc.pl script. Precise them inside quotes (eg. '-x 10**4 -X 150000')", type=str, default="-x 10**4")
+    parser.add_argument("--psmc_kwargs", help="PSMC params (eg. --psmc_kwarg -p 10+22*2+4+6; -N30 -t15 -r5  and so on)",  type=str)
     #PL distribution
     parser.add_argument("--gq_distrib", help = "to compute the GQ (genotype quality) distribution", action = "store_true")
     #SMCPP
@@ -126,16 +129,27 @@ def parse_args():
     parser.add_argument("--out_dir_stats", help="Output path of the stats. Will create a dir.",  type=str)
     parser.add_argument("--L", help="The actual size of the genotyped sequence length that produced the VCF, before any filters.",  type=int)
     parser.add_argument("--n", help="Number of sequences that produced the VCF. Eg for 5 dipl individuals, n=10.",  type=int)
-
+    parser.add_argument("--contig_filter", help="Keep only contigs satisfiying that regular expression.",  type=str)
+    # Parse args
     args = parser.parse_args()
-    # if args.sfs:
-    #     optional_args = [args.popid, args.vcf, args.out]
-    # else:
-    #     optional_args = [args.popid, args.gentime, args.mu, args.out]
+    if args.sfs:
+        optional_args = [args.popid, args.vcf, args.out]
+    else:
+        optional_args = [args.popid, args.gentime, args.mu, args.out]
 
-    # if not args.config_file and not all(optional_args):
-    #     parser.error("At least one of the optional arguments is missing: popid, samples, vcf, gentime, mu, out, L, n.\nMaybe you forgot to provide a config file?")
-
+    if not args.config_file and not all(optional_args):
+        parser.error("At least one of the optional arguments is missing: popid, samples, vcf, gentime, mu, out, L, n.\nMaybe you forgot to provide a config file?")
+        
+    # Check if at least one of the required flags is set
+    if not (args.sfs or args.plot_sfs or args.stairwayplot2 or args.plot_stairwayplot2 or 
+            args.dadi or args.plot_dadi or args.msmc2 or args.plot_msmc2 or 
+            args.psmc or args.plot_psmc or args.gq_distrib or args.smcpp or 
+            args.plot_smcpp or args.Gplot or args.pca or args.plot_pca):
+        print("Error: At least one of the following options must be specified:")
+        print("--sfs, --plot_sfs, --stairwayplot2, --plot_stairwayplot2, --dadi, --plot_dadi,")
+        print("--msmc2, --plot_msmc2, --psmc, --plot_psmc, --gq_distrib, --smcpp,")
+        print("--plot_smcpp, --Gplot, --pca, --plot_pca")
+        exit(1)
     return args
 
 def main():
@@ -144,7 +158,7 @@ def main():
 
     ## CONFIG FILE
     if args.popid is None:
-        param = parse_config(args.config_file)
+        param = parse_config(args.config_file, args)
     else:
         program_path = "/".join(os.path.abspath(__file__).split("/")[:-1])+"/"
         param = {
@@ -162,7 +176,7 @@ def main():
             'path_to_stairwayplot2': program_path+'/bin/stairway_plot_es/',
             'blueprint_template': program_path+'/bin/template.blueprint',
             'out_dir_stairwayplot2': args.out+'/output_stairwayplot2/',
-            'summary_file_stw': args.out+'/output_stairwayplot2/hirrus/hirrus.final.summary',
+            'summary_file_stw': args.out+'/output_stairwayplot2/'+args.popid+'/'+args.popid+'.final.summary',
             'L': args.L,
             # Dadi params
             'lower_bound': '1, 1, 0.05, 0.01',
@@ -171,7 +185,7 @@ def main():
             'optimizations': '100',
             'out_dir_dadi': args.out+'/output_dadi/',
             'out_dir_smcpp': args.out+'/output_smcpp/',
-            'plot_file_smcpp': args.out+'/output_smcpp/hirrus_inference.csv',
+            'plot_file_smcpp': args.out+'/output_smcpp/'+args.popid+'_inference.csv',
             'out_dir_gq_distrib': args.out+'/output_stats/',
             'out_dir_stats': args.out+'/output_stats/',
             'final_out_dir': args.out+'/inferences/',
@@ -179,19 +193,23 @@ def main():
             'length_cutoff': 100000,
             'ref_genome': None,
             'n_clust_kmeans': args.n_clust_kmeans,
-            'cpus': 1
+            'cpus': 1,
+            'contig_filter': args.contig_filter,
+            'msmc2_kwargs' : args.msmc2_kwargs,
+            'psmc_kwargs' : args.psmc_kwargs,
+            'plot_psmc_kwargs' : args.plot_psmc_kwargs
         }
         for p in param["name_pop"]:
             param[p] = param[p].split(",")
             param["n_"+p] = len(param[p])
     
-    param["cpus"] = args.cpus
     # Add args to the config for hybrid config + parameters set in args
-#    for arg_name in vars(args):
-#        arg_value = getattr(args, arg_name)
-#        if arg_name not in param:
-#            # config value is kept over args
-#            param[arg_name] = arg_value
+    # for arg_name in vars(args):
+    #    arg_value = getattr(args, arg_name)
+    #    if arg_name not in param:
+    #        # config value is kept over args
+    #        param[arg_name] = arg_value
+           
     ## CREATING DIRECTORIES
     if not os.path.exists(param["out_dir"]):
         os.makedirs(param["out_dir"])
@@ -270,19 +288,18 @@ def main():
                 if "path_to_sfs" not in param.keys():
                     print("--sfs flag or path_to_sfs missing")
                 else:
-                    with open(param["path_to_sfs"], "rt") as sfs:
-                        line=sfs.readline()
-                        while line != "":
-                            SFS_dict[p] = [int(i) for i in line[:-1].split(",")]
-                            line = sfs.readline()
-        SFS_dict_trans = {}
-        for p in param["name_pop"]:
-            SFS_dict_trans[p] = transform_sfs(sfs = SFS_dict[p], n = param["n_"+p], \
-                    folded = param["folded"])
-            with open(param["out_dir_sfs"]+"SFS_"+p+"_transformed.txt", 'w') as sfs_out:
-                sfs_out.write(",".join(map(str, SFS_dict_trans[p])))
+                    for p in param["name_pop"]:
+                        sfs_list = parse_sfs(param["path_to_sfs"])
+                        SFS_dict[param["name_pop"][0]] = sfs_list
+        # SFS_dict_trans = {}
+        # for p in param["name_pop"]:
+        #     SFS_dict_trans[p] = transform_sfs(sfs = SFS_dict[p], n = param["n_"+p], \
+        #             folded = param["folded"])
+        #     with open(param["out_dir_sfs"]+"SFS_"+p+"_transformed.txt", 'w') as sfs_out:
+        #         sfs_out.write(",".join(map(str, SFS_dict_trans[p])))
             if args.plot_sfs:
-                plot_sfs(sfs = SFS_dict_trans[p], plot_title = "SFS (transformed) "+p, output_file = param["out_dir_sfs"]+p+"_trans.png")
+                #plot_sfs(sfs = SFS_dict_trans[p], plot_title = "SFS (transformed) "+p, output_file = param["out_dir_sfs"]+p+"_trans.png")
+                barplot_sfs(sfs = SFS_dict[p], output_file = param["out_dir_sfs"]+"SFS_"+p+"_transformed.png", title = "SFS "+p, transformed = True )
 
     # Run Stairwayplot2
     if args.stairwayplot2:
@@ -353,7 +370,7 @@ def main():
                          out_dir = param["out_dir_stats"])
     ##SMC++
     if args.smcpp:
-        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff=param["length_cutoff"])
+        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff=param["length_cutoff"], contig_regex=param["contig_filter"])
         if not os.path.exists(param["out_dir_smcpp"]):
             os.makedirs(param["out_dir_smcpp"])
         for p in param["name_pop"]:
@@ -362,28 +379,30 @@ def main():
                   gen_time = param["gen_time"], num_cpus=param["cpus"])
     ##MSMC2
     if args.msmc2:
-        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"])
+        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"],  contig_regex=param["contig_filter"])
         if not os.path.exists(param["out_dir_msmc2"]):
             os.makedirs(param["out_dir_msmc2"])
         for p in param["name_pop"]:
             msmc2(contigs = contigs, popid = p, pop_ind = param[p], vcf = param["vcf"], \
                   out_dir = param["out_dir_msmc2"], mu = param["mut_rate"], gen_time = param["gen_time"],
-                  num_cpus=param["cpus"])
+                  kwargs = param["msmc2_kwargs"], num_cpus=param["cpus"])
     ##PSMC
     if args.psmc:
-        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"])
+        contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"],  contig_regex=param["contig_filter"])
         if not os.path.exists(param["out_dir_psmc"]):
             os.makedirs(param["out_dir_psmc"])
         for p in param["name_pop"]:
             psmc(ref_genome = param["ref_genome"], contigs = contigs, popid = p, pop_ind = param[p], vcf = param["vcf"], \
-                 out_dir = param["out_dir_psmc"], mu = param["mut_rate"], gen_time = param["gen_time"])
+                 out_dir = param["out_dir_psmc"], mu = param["mut_rate"], gen_time = param["gen_time"], kwargs = param["psmc_kwargs"])
     # Plot SFS
     if args.plot_sfs:
         SFS_dict = {}
         for p in param["name_pop"]:
             sfs_list = parse_sfs(param["path_to_sfs"])
             SFS_dict[param["name_pop"][0]] = sfs_list
-            plot_sfs(sfs = SFS_dict[p], plot_title = "SFS "+p, output_file = param["out_dir_sfs"]+"SFS_"+p+".png")
+            #plot_sfs(sfs = SFS_dict[p], plot_title = "SFS "+p, output_file = param["out_dir_sfs"]+"SFS_"+p+".png")
+            barplot_sfs(sfs = SFS_dict[p], output_file = param["out_dir_sfs"]+"SFS_"+p+".png", title = "SFS "+p, transformed = False )
+
 
     # Plot PCA
     if args.plot_pca:
@@ -414,7 +433,7 @@ def main():
                       psmc_output_file = param["out_dir_psmc"]+"/"+p+"_combined.psmc.final",
                       plot_output_prefix = param["out_dir_psmc"]+"/"+p,
                       gen_time=param["gen_time"], mut_rate=param["mut_rate"],
-                      out_dir = param["final_out_dir"])
+                      out_dir = param["final_out_dir"], kwargs=param["plot_psmc_kwargs"])
     # Plot SMC++
     if args.plot_smcpp:
         for p in param["name_pop"]:

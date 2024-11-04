@@ -4,18 +4,16 @@ import yaml
 
 # Include additionnal functions
 include: "common.smk"
+include: "config/resources.smk"
 
+#popsize config
+#configfile: "config/config.yaml"
 # Add complementary config
 popsize_config = yaml.safe_load(open("workflow/modules/popsize/config/config.yaml"))
 config.update(popsize_config)
 
-# Update resources
-popsize_resources = yaml.safe_load(open("workflow/modules/popsize/config/resources.yaml"))
-resources.update(popsize_resources)
-
 samples = pd.read_table(config["samples"], sep=",", dtype=str).replace(' ', '_', regex=True)
 REFGENOME = samples['refGenome'].unique().tolist()
-
 
 rule all:
     input:
@@ -74,7 +72,7 @@ rule stairwayplot2:
     conda:
         "envs/deminfhelper.yml"
     resources:
-        mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem']
+        mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem_mb']
     threads:
         resources['swp2']['threads']
     shell:
@@ -92,7 +90,7 @@ rule smcpp:
         smcpp_summary = "results/{refGenome}/popsize/output_smcpp/{prefix}.final.json"
     conda:
         "envs/smcpp.yml"
-    resources: mem_mb = lambda wildcards, attempt: attempt * resources['smcpp']['mem']
+    resources: mem_mb = lambda wildcards, attempt: attempt * resources['smcpp']['mem_mb']
     threads: resources['smcpp']['threads']
     shell:
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --cpus {threads} --smcpp ;"+ \
@@ -123,11 +121,25 @@ rule psmc:
         vcf_index = "results/{refGenome}/{prefix}_raw.vcf.gz.tbi",
         ref_genome = "results/{refGenome}/data/genome/{refGenome}.fna"
     output:
-        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}.eps"
+        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final"
+    threads: resources['psmc']['threads']
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --psmc ;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --psmc"
+
+rule psmc_plot:
+    """
+    produce psmc plot 
+    """
+    input:
+        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
+        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final"
+    output:
+        psmc_figure = "results/{refGenome}/popsize/output_psmc/{prefix}.eps"
+    conda:
+        "envs/deminfhelper.yml"
+    shell:
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_psmc"
 
 rule msmc2:
@@ -139,7 +151,7 @@ rule msmc2:
         vcf = "results/{refGenome}/{prefix}_raw.vcf.gz"
     output:
         msmc2_output = "results/{refGenome}/popsize/output_msmc2/{prefix}_msmc2.final.txt"
-    resources: mem_mb = lambda wildcards, attempt: attempt * resources['msmc2']['mem']
+    resources: mem_mb = lambda wildcards, attempt: attempt * resources['msmc2']['mem_mb']
     threads: resources['msmc2']['threads']
     conda:
         "envs/deminfhelper.yml"
@@ -161,6 +173,4 @@ rule statistics:
     shell:
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --pca ;"+ \
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --gq_distrib"
-
-
         

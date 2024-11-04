@@ -93,7 +93,7 @@ def distrib_GQ(GQ_pop, line = [], pos_ind = None, bin_size = 10): #PL is a dict
 
     return GQ_pop
 
-def parse_config(config_file):
+def parse_config(config_file, args=None):
     """
     Parse a configuration file and return the configuration parameters as a dictionary.
 
@@ -102,6 +102,7 @@ def parse_config(config_file):
 
     Parameters:
     - config_file (str): The path to the configuration file.
+    - args (dict): The dictionnary of command line arguments. 
 
     Returns:
     - param (dict): A dictionary containing configuration parameters and values.
@@ -141,6 +142,15 @@ def parse_config(config_file):
         param["ref_genome"] = None
     if 'length_cutoff' not in param.keys():
         param["length_cutoff"] = length_cutoff
+        
+    # # if command line arguments are parsed
+    # if args:
+    #     # Iterate over the arguments, as they override config file
+    #     for arg in vars(args):
+    #         value = getattr(args, arg)
+    #         if value is not None:
+    #             param[arg] = value
+
     return param
 
 def update_config(config_dict, config_file):
@@ -231,6 +241,7 @@ def parse_sfs(sfs_file):
             spectrum_data = list(map(int, file.readline().strip().split()))
             # Check if the number of bins in the spectrum matches the expected number
             if len(spectrum_data) != num_individuals:
+                print("Len SFS=", len(spectrum_data), "Nb indiv. = ", num_individuals)
                 raise ValueError("Error: Number of bins in the spectrum doesn't match the expected number of individuals.")
             # Read the mask data
             mask_data = list(map(int, file.readline().strip().split()))
@@ -250,7 +261,7 @@ def parse_sfs(sfs_file):
     # final return of SFS as a list
     return masked_spectrum
 
-def get_contigs_lengths(vcf, length_cutoff=100000, only_names = False):
+def get_contigs_lengths(vcf, length_cutoff=100000, only_names=False, contig_regex=None):
     """
     Parse contig lengths from a VCF file header and return a dictionary of contig names and lengths.
 
@@ -307,6 +318,10 @@ def get_contigs_lengths(vcf, length_cutoff=100000, only_names = False):
     if only_names:
         return list(contigs.keys())
     print("Finished getting contig sizes.")
+    if contig_regex:
+        contig_regex = re.compile(contig_regex)
+        print(f"Keeping only contigs with regex: {contig_regex}")
+        contigs = {contig_name: contig_size for contig_name, contig_size in contigs.items() if re.match(contig_regex, contig_name)}
     return contigs
 
 def dadi_output_parse(dadi_output_file):
