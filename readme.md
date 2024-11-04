@@ -75,11 +75,12 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
 
      ```yaml
      ## Popsize options
-     # popsize modules to use for inference; can be : dadi, swp2, msmc2, psmc, smcpp. Specify multiple tools comma-separated: "dadi, swp2, psmc" for example
+     # popsize modules to use for inference; can be : dadi, swp2, msmc2, psmc, or smcpp.
+     # Specify multiple tools as comma-separated: "dadi, swp2, psmc" for example.
      popsize_tools: "dadi, swp2, msmc2, psmc, smcpp"
      # specify generation time for the studied species.
      gen_time: 5.6
-     # specify the average per site mutation rate 
+     # specify the average per site per generation mutation rate.
      mut_rate: 5e-9
      # specify whether to use folded SFS or not. 
      folded: True
@@ -159,7 +160,7 @@ slurm_partition: YOUR_PARTITION
 
 ## Contribution
 
-If you encounter issues or have suggestions, please open an issue on the [GitHub repository](https://github.com/tforest/popsize).
+If you encounter issues or have suggestions, please open an issue on the [GitHub repository](https://github.com/tforest/popsize/issues).
 
 ## Acknowledgments
 
