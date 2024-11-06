@@ -109,6 +109,16 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
 samples: "config/samples.csv"
 final_prefix: "picus_viridis"
 bigtmp: "/path/to/big/tmp/"
+
+# low coverage options (< 10x)
+# Comment those lines for the test dataset
+#minP: 1
+#minD: 1
+
+# high coverage options (> 10x)
+# Uncomment those lines for the test dataset
+minP: 2
+minD: 4
 ```
  - Create a config/samples.csv file containing information about your samples, for example:
  ```csv
