@@ -144,6 +144,9 @@ You can find more information about the sample sheet in [snpArcher documentation
 latency-wait: 300 # Wait N seconds for output files due to latency
 retries: 3 # Retry jobs N times.
 mem_mb: attempt * 16000
+# If your cluster support no wall time, you could just comment the runtime line.
+# If not, and you would like to try the test dataset, you should aim to set
+# the runtime up to 3 days, or you would encounter a timeout error.
 runtime: 720 # In minutes, here 12h
 slurm_partition: YOUR_PARTITION
 ```
