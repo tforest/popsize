@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Taken from msmc-tools
 commit 1d0c882c470da8334abc607b000ea17399c5fff9
 Author: Stephan Schiffels <stephan_schiffels@mac.com>

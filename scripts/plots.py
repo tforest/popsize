@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 plots.py - Module of DemInfHelper for generating various plots and visualizations as part of the demography inference workflow.
 
@@ -159,7 +157,7 @@ def plot_sfs(sfs, plot_title, output_file):
     plt.savefig(output_file)
     plt.close()
 
-def plot_stairwayplot2(popid, summary_file, out_dir, xlog=True, ylog=True):
+def plot_stairwayplot2(popid, summary_file, out_dir, xlog=True, ylog=True, plot_format="png"):
     """
     Generate a stairway plot from summary data.
 
@@ -199,12 +197,12 @@ def plot_stairwayplot2(popid, summary_file, out_dir, xlog=True, ylog=True):
         plt.xscale("log")
     if ylog:
         plt.yscale("log")
-    plt.xlabel('Time (in years)')
+    plt.xlabel('Time (years ago)')
     plt.ylabel('Ne')
-    plt.savefig(out_dir+popid+"_stw_plot.png")
+    plt.savefig(out_dir+popid+f"_stw_plot.{plot_format}")
     plt.close()
 
-def plot_msmc2(popid, summary_file, mu, gen_time, out_dir, xlog=True, ylog=True):
+def plot_msmc2(popid, summary_file, mu, gen_time, out_dir, xlog=True, ylog=True, plot_format="png"):
     """
     Generate a plot from MSMC2 summary data.
 
@@ -249,9 +247,9 @@ def plot_msmc2(popid, summary_file, mu, gen_time, out_dir, xlog=True, ylog=True)
     if ylog:
         plt.yscale("log")
     plt.title(fr"[MSMC2] {popid} $\mu$={mu} gen.t={gen_time}")
-    plt.xlabel('Time (in years)')
+    plt.xlabel('Time (years ago)')
     plt.ylabel('Ne')
-    plt.savefig(out_dir+popid+"_msmc2_plot.png")
+    plt.savefig(out_dir+popid+f"_msmc2_plot.{plot_format}")
     plt.close()
 
 def plot_psmc(popid, sample_names, psmc_output_file,
@@ -290,7 +288,7 @@ def plot_psmc(popid, sample_names, psmc_output_file,
     print(cmd)
     os.system(f"cp {plot_output_prefix}.eps {out_dir+popid}_psmc_plot.eps")
     
-def plot_distrib_gq(popid, gq, out_dir_gq):
+def plot_distrib_gq(popid, gq, out_dir_gq, plot_format="png"):
     """
     Plot the distribution of Genotype Quality (GQ) values from a VCF file.
 
@@ -323,7 +321,7 @@ def plot_distrib_gq(popid, gq, out_dir_gq):
     plt.title(f"{popid} GQ distribution")
     plt.xlabel("GQ")
     plt.ylabel('Numbre of sites')
-    plt.savefig(f"{out_dir_gq}/{popid}_GQ_distrib.png")
+    plt.savefig(f"{out_dir_gq}/{popid}_GQ_distrib.{plot_format}")
     plt.close()
 
 def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, filter_prefix=None, nb_bins=None):
@@ -408,7 +406,7 @@ def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, 
             pdf.savefig()
             plt.close()
             
-def plot_smcpp(popid, summary_file, out_dir, xlog=True, ylog=True):
+def plot_smcpp(popid, summary_file, out_dir, xlog=True, ylog=True, plot_format="png"):
     """
     Plot the effective population size (Ne) trajectory using SMC++ summary output.
 
@@ -445,14 +443,14 @@ def plot_smcpp(popid, summary_file, out_dir, xlog=True, ylog=True):
     if ylog:
         plt.yscale("log")
     plt.title(fr"[SMC++] {popid}")
-    plt.xlabel('Time (in years)')
+    plt.xlabel('Time (years ago)')
     plt.ylabel('Ne')
-    plt.savefig(out_dir+popid+"_smcpp_plot.png")
+    plt.savefig(out_dir+popid+f"_smcpp_plot.{plot_format}")
     plt.close()
     
 def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_time,
                                   xlim = None, ylim = None, xlog = True, ylog = True,
-                                  max_v = -10**6, nb_plots_max = 10, title="Dadi pop. estimates"):
+                                  max_v = -10**6, nb_plots_max = 10, title=None, plot_format="png"):
     """
     Plot demographic scenarios estimated using Dadi for a population with three epochs of size changes.
 
@@ -482,7 +480,6 @@ def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_ti
     Returns:
         None: The function generates the Dadi plot but does not return any values.
     """
-    best_model = None
     scenarios = {}
     for elem in dadi_vals_list:
         # elem is structured like this:
@@ -506,98 +503,233 @@ def plot_dadi_output_three_epochs(dadi_vals_list,name_pop,out_dir, mu, L, gen_ti
         TB = np.array(elem[2][2]) * gen_time * Nanc
         TF = np.array(elem[2][3]) * gen_time * Nanc
         # now create x and y
-        lines_x.append([0, TF, TF, TF+TB, TF+TB, (TF+TB)+0.01])
-        lines_y.append([nuF, nuF, nuB, nuB, 1, 1])
+        lines_x.append([0, TF, TF, TF+TB, TF+TB])
+        lines_y.append([nuF, nuF, nuB, nuB, 1])
     for i in range(1, len(lines_x)):
         x = lines_x[i]
         y = lines_y[i]
         plt.plot(x, y, '--', alpha = 0.4)
+        # draws an artificial dotted line to represent infinity of ancestral pop
+        plt.hlines(y[-1], x[-1], x[-1]*1.05, linestyle=':', alpha = 0.4)
     #best model :
     best_x = lines_x[0]
     best_y = lines_y[0]
     plt.plot(best_x, best_y, 'r-', lw=2)
+    # draws an artificial dotted line to represent infinity of ancestral pop
+    plt.hlines(best_y[-1], best_x[-1], best_x[-1]*1.05, linestyle=':', color='red')
     if xlog:
         plt.xscale("log")
     if ylog:
         plt.yscale("log")
     plt.ylabel("Individuals (Na)")
-    plt.xlabel("Time (years)")
-    plt.title(fr"[Dadi] {name_pop} $\mu$={mu} gen.t={gen_time}")
+    plt.xlabel("Time (years ago)")
+    if title:
+        plt.title(title)
+    else:
+        plt.title(fr"[Dadi] {name_pop} $\mu$={mu} gen.t={gen_time}")
     if xlim:
         plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
-    plt.savefig(out_dir+"/"+name_pop+"_dadi_plot.png")
+    plt.savefig(out_dir+"/"+name_pop+f"_dadi_plot.{plot_format}")
     plt.close()
 
-def Gplot(T_scaled_gen,gen_time,dadi_vals_list,name_pop,out_dir,popid,
-          summary_file,summary_file2, max_v = -10**6, title="estimates"):
+def Gplot(gen_time, mu, L, out_dir, popid, name_pop=None,
+          dadi_file=None, summary_file=None, summary_file2=None,
+          msmc2_summary_file=None, psmc_output_prefix=None,
+          max_v=-10**6, title="estimates", plot_format="png"):
     """
-    To generate a combined plot of all methods. Experimental.
+    Generate a combined demographic inference plot overlaying all available methods.
+
+    Each method is optional: the function checks whether the corresponding output file
+    exists and silently skips any method whose file is absent. At least one method must
+    produce data, otherwise the plot is not saved.
+
+    Methods:
+        dadi            -- requires dadi_file (.InferDM.bestfits)
+        SMC++           -- requires summary_file2 (CSV)
+        StairwayPlot2   -- requires summary_file (*final.summary)
+        MSMC2           -- requires msmc2_summary_file (*_msmc2.final.txt)
+        PSMC            -- requires psmc_output_prefix (*_combined.psmc.final)
+
+    All plotted curves are extended to the oldest time point across methods with a
+    dashed horizontal line. StairwayPlot2 and PSMC are also extended to t=0.
+
+    Parameters:
+        gen_time (float): Generation time in years.
+        mu (float): Mutation rate per site per generation.
+        L (float): Effective sequence length in bp (used to scale dadi Nanc).
+        out_dir (str): Directory where the output PNG will be saved.
+        popid (str): Population identifier used in the plot title and output filename.
+        name_pop (str, optional): Unused, kept for call-site compatibility.
+        dadi_file (str, optional): Path to the dadi bestfits file (.InferDM.bestfits).
+        summary_file (str, optional): Path to the StairwayPlot2 final summary file
+            (*final.summary, tab-separated, columns 5=T_years, 6=Ne_median).
+        summary_file2 (str, optional): Path to the SMC++ CSV output file
+            (columns 1=T_years, 2=Ne).
+        msmc2_summary_file (str, optional): Path to the MSMC2 final txt file
+            (tab-separated, columns left_time_boundary, lambda).
+        psmc_output_prefix (str, optional): Path prefix for PSMC output; expects
+            prefix + '_combined.psmc.final'. Parses the last iteration of each
+            sample and averages across samples.
+        max_v (float): Unused legacy parameter.
+        title (str): Unused legacy parameter (plot title comes from popid).
+
+    Returns:
+        None: Saves the plot as out_dir + popid + '_combined_plot.png', or prints a warning
+        and returns early if no method output files are found.
     """
-    with open(T_scaled_gen) as fo:
-        line = fo.readline()
-        fo.close()
-    t_scaled_gen= line[1:-1]
-    T_scaled_years=float(str.split(t_scaled_gen,", ")[-1])
+    mu = float(mu)
+    L = float(L)
+    gen_time = float(gen_time)
+    plt.figure(figsize=(10, 7))
 
-    for dadi_params in dadi_vals_list:
-        dadi_params[2][2]*=T_scaled_years
-        dadi_params[2][3]*=T_scaled_years
+    plotted = {}
 
-    best_model = None
-    for elem in dadi_vals_list:
-        popt = elem[2]
-        if elem[1] > max_v:
-            max_v = elem[1]
-            best_model = elem[2]
-    best_x = [0, best_model[3], best_model[3], best_model[3]+best_model[2], best_model[3]+best_model[2], (best_model[3]+best_model[2])+0.01]
-    best_y = [best_model[1], best_model[1], best_model[0], best_model[0], 1, 1]
-    #with open(T_scaled_gen) as fo:
-    #    line = fo.readline()
-    #    fo.close()
-    #t_scaled_gen= line[1:-1]
-    #t_scaled_gen=str.split(t_scaled_gen,", ")[-1]
-    Nanc=str.split(t_scaled_gen,", ")[0]
-    #t_scaled_gen=[i*float(t_scaled_gen) for i in best_x]
-    plt.plot(best_x, best_y,color="green")
-    Ne=[]
-    T=[]
-    with open(summary_file2) as input_file2:
-        line = input_file2.readline()
-        line = input_file2.readline()
-        while line != '':
-            #if float(line.split('\t')[6]) not in Ne or float(line.split('\t')[5]) not in T:
-            Ne.append(float(line.split(',')[2]))
-            T.append(float(line.split(',')[1]))
-            line = input_file2.readline()
-    plt.plot(T,[i/(2*Ne[-1]) for i in Ne],color="blue")
+    # --- dadi ---
+    if dadi_file and os.path.exists(dadi_file):
+        from parsing import dadi_output_parse
+        dadi_vals_list = dadi_output_parse(dadi_file)
+        if dadi_vals_list:
+            scenarios = {float(e[1]): e for e in dadi_vals_list}
+            best_elem = scenarios[sorted(scenarios.keys(), reverse=True)[0]]
+            theta = best_elem[3]
+            Nanc = theta / (4 * mu * L)
+            TB = float(np.array(best_elem[2][2]) * gen_time * Nanc)
+            TF = float(np.array(best_elem[2][3]) * gen_time * Nanc)
+            T_dadi_max = TF + TB
+            nuB = float(np.array(best_elem[2][0]) * Nanc)
+            nuF = float(np.array(best_elem[2][1]) * Nanc)
+            plt.plot([0, TF, TF, T_dadi_max, T_dadi_max], [nuF, nuF, nuB, nuB, Nanc],
+                     color="green", label=r"$\partial$a$\partial$i")
+            plotted['dadi'] = (T_dadi_max, Nanc)
 
-    Ne_med=[]
-    Ne1=[]
-    Ne3=[]
-    T=[]
-    with open(summary_file) as input_file:
-        line = input_file.readline()
-        line = input_file.readline()
-        while line != '':
-            #if float(line.split('\t')[6]) not in Ne or float(line.split('\t')[5]) not in T:
-            Ne_med.append(float(line.split('\t')[6]))
-            Ne1.append(float(line.split('\t')[7]))
-            Ne3.append(float(line.split('\t')[8]))
-            T.append(float(line.split('\t')[5]))
-            line = input_file.readline()
-    plt.plot(T,[i/(2*Ne_med[-1]) for i in Ne_med],color="red")
-    #plt.plot(T,[i/(2*Ne1[-1]) for i in Ne1],color="grey")
-    #plt.plot(T,[i/(2*Ne3[-1]) for i in Ne3],color="grey")
+    # --- SMC++ ---
+    if summary_file2 and os.path.exists(summary_file2):
+        Ne_smcpp = []
+        T_smcpp = []
+        with open(summary_file2) as f:
+            f.readline()
+            line = f.readline()
+            while line != '':
+                Ne_smcpp.append(float(line.split(',')[2]))
+                T_smcpp.append(float(line.split(',')[1]))
+                line = f.readline()
+        if T_smcpp:
+            T_smcpp, Ne_smcpp = plot_straight_x_y(T_smcpp, Ne_smcpp)
+            plt.plot(T_smcpp, Ne_smcpp, color="blue", label="SMC++")
+            plotted['smcpp'] = (T_smcpp[-1], Ne_smcpp[-1])
+
+    # --- StairwayPlot2 ---
+    if summary_file and os.path.exists(summary_file):
+        Ne_med = []
+        T_stw = []
+        with open(summary_file) as f:
+            f.readline()
+            line = f.readline()
+            while line != '':
+                Ne_med.append(float(line.split('\t')[6]))
+                T_stw.append(float(line.split('\t')[5]))
+                line = f.readline()
+        if T_stw:
+            plt.plot(T_stw, Ne_med, color="red", label="StairwayPlot2")
+            plt.hlines(Ne_med[0], 0, T_stw[0], colors="red", linestyles="dashed")
+            plotted['stw'] = (T_stw[-1], Ne_med[-1])
+
+    # --- MSMC2 ---
+    if msmc2_summary_file and os.path.exists(msmc2_summary_file):
+        df = pd.read_csv(msmc2_summary_file, delimiter='\t')
+        T_msmc2 = list(df['left_time_boundary'] / mu * gen_time)
+        Ne_msmc2 = list((1 / df['lambda']) / (2 * mu))
+        if T_msmc2:
+            T_msmc2, Ne_msmc2 = plot_straight_x_y(T_msmc2, Ne_msmc2)
+            plt.plot(T_msmc2, Ne_msmc2, color="purple", label="MSMC2")
+            plotted['msmc2'] = (T_msmc2[-1], Ne_msmc2[-1])
+
+    # --- PSMC --- parse .psmc file directly, average across samples
+    # Uses same scaling as psmc_plot.pl (opts_s = fq2psmcfa -s default = 100):
+    #   N0 = theta / opts_s / (4 * mu)
+    #   T  = 2 * N0 * t_left * gen_time
+    #   Ne = lambda * N0
+    if psmc_output_prefix:
+        psmc_file = psmc_output_prefix + "_combined.psmc.final"
+        if os.path.exists(psmc_file):
+            opts_s = 100  # fq2psmcfa default window size in bp (-s flag)
+            with open(psmc_file) as f:
+                content = f.read()
+            blocks = [b.strip() for b in content.split('//') if b.strip()]
+            parsed_blocks = []
+            for block in blocks:
+                n_rd = None; theta = None; rs_data = []
+                for line in block.strip().split('\n'):
+                    parts = line.split('\t')
+                    tag = parts[0]
+                    if tag == 'RD':
+                        n_rd = int(parts[1])
+                    elif tag == 'TR':
+                        theta = float(parts[1])
+                    elif tag == 'RS':
+                        rs_data.append((float(parts[2]), float(parts[3])))
+                if n_rd is not None and theta is not None and rs_data:
+                    parsed_blocks.append({'n_rd': n_rd, 'theta': theta, 'rs': rs_data})
+            if parsed_blocks:
+                max_rd = max(b['n_rd'] for b in parsed_blocks)
+                best_blocks = [b for b in parsed_blocks if b['n_rd'] == max_rd]
+                all_curves = []
+                for b in best_blocks:
+                    N0 = b['theta'] / opts_s / (4 * mu)
+                    T_vals = [2 * N0 * t * gen_time for t, lam in b['rs']]
+                    Ne_vals = [lam * N0 for t, lam in b['rs']]
+                    pairs = [(t, n) for t, n in zip(T_vals, Ne_vals) if t > 0]
+                    if pairs:
+                        all_curves.append(([p[0] for p in pairs], [p[1] for p in pairs]))
+                if all_curves:
+                    if len(all_curves) == 1:
+                        T_psmc_plot, Ne_psmc_plot = all_curves[0]
+                    else:
+                        T_common = np.linspace(
+                            max(c[0][0] for c in all_curves),
+                            min(c[0][-1] for c in all_curves),
+                            500
+                        )
+                        interp_Ne = np.array([
+                            np.interp(T_common, c[0], c[1]) for c in all_curves
+                        ])
+                        T_psmc_plot = list(T_common)
+                        Ne_psmc_plot = list(interp_Ne.mean(axis=0))
+                    T_psmc_plot, Ne_psmc_plot = plot_straight_x_y(T_psmc_plot, Ne_psmc_plot)
+                    plt.plot(T_psmc_plot, Ne_psmc_plot, color="orange", label="PSMC (avg)")
+                    plt.hlines(Ne_psmc_plot[0], 0, T_psmc_plot[0], colors="orange", linestyles="dashed")
+                    plotted['psmc'] = (T_psmc_plot[-1], Ne_psmc_plot[-1])
+
+    if not plotted:
+        print(f"Warning: Combined plot for {popid} — no method output files found, skipping plot.")
+        plt.close()
+        return
+
+    # --- dashed extensions to the most ancient time across all plotted methods ---
+    T_max = max(v[0] for v in plotted.values())
+    if 'dadi' in plotted:
+        plt.hlines(plotted['dadi'][1], plotted['dadi'][0], T_max, colors="green", linestyles="dashed")
+    if 'smcpp' in plotted:
+        plt.hlines(plotted['smcpp'][1], plotted['smcpp'][0], T_max, colors="blue", linestyles="dashed")
+    if 'stw' in plotted:
+        plt.hlines(plotted['stw'][1], plotted['stw'][0], T_max, colors="red", linestyles="dashed")
+    if 'msmc2' in plotted:
+        plt.hlines(plotted['msmc2'][1], plotted['msmc2'][0], T_max, colors="purple", linestyles="dashed")
+    if 'psmc' in plotted:
+        plt.hlines(plotted['psmc'][1], plotted['psmc'][0], T_max, colors="orange", linestyles="dashed")
+
+    plt.xscale("log")
+    plt.yscale("log")
     plt.title(popid)
-    #plt.xlim(0,18000)
-    plt.xlabel('Time (in years)')
-    plt.ylabel('Na')
-    plt.savefig(out_dir+popid+"_all_plot.png")
+    plt.xlabel('Time (years ago)')
+    plt.ylabel('Effective population size (Ne)')
+    plt.legend()
+    plt.savefig(out_dir + popid + f"_combined_plot.{plot_format}")
     plt.close()
-    
-def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9):
+
+def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9, plot_format="png"):
     """
     Perform Principal Component Analysis (PCA) on genetic data and generate plots and cluster information.
 
@@ -687,7 +819,7 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9):
     plt.title(f'PCA: PC1 vs PC2 ({num_components} components)')
     plt.xlabel(f'PC1 ({variance_explained[0]:.2f}%)')
     plt.ylabel(f'PC2 ({variance_explained[1]:.2f}%)')
-    plt.savefig(out_dir+"/"+popid+"_PCA.png")
+    plt.savefig(out_dir+"/"+popid+f"_PCA.{plot_format}")
 
     # Create a Plotly scatter plot with different symbols for each cluster
     symbol_sequence = range(1,10)  # Define symbol sequence
@@ -728,4 +860,4 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9):
     plt.xlabel('Number of Components (K)')
     plt.ylabel('Proportion of Explained Variance (%)')
     plt.title(f'Explained Variance by Components ({num_components} components)')
-    plt.savefig(out_dir+"/"+popid+"_explained_var.png")
+    plt.savefig(out_dir+"/"+popid+f"_explained_var.{plot_format}")
