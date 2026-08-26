@@ -356,7 +356,7 @@ def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, kwargs
     os.system(tabix_cmd)
         
     # Get the available CPUs
-    available_cpus = list(range(multiprocessing.cpu_count()))
+    available_cpus = sorted(os.sched_getaffinity(0))
     # Choose the first 'num_cpus' CPUs
     cpu_affinity = available_cpus[:num_cpus]
 
