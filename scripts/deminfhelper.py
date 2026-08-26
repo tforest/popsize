@@ -118,7 +118,7 @@ def parse_args():
     #PSMC
     parser.add_argument("--psmc", help = "to run PSMC", action = "store_true")
     parser.add_argument("--plot_psmc", help = "to plot psmc inference", action = "store_true")
-    parser.add_argument("--plot_psmc_kwargs", help = "Params to pass to plot_psmc.pl script. Precise them inside quotes (eg. '-x 10**4 -X 150000')", type=str, default="-x 10**4")
+    parser.add_argument("--plot_psmc_kwargs", help = "Params to pass to plot_psmc.pl script. Precise them inside quotes (eg. '-x 10**4 -X 150000')", type=str)
     parser.add_argument("--psmc_kwargs", help="PSMC params (eg. --psmc_kwarg -p 10+22*2+4+6; -N30 -t15 -r5  and so on)",  type=str)
     #PL distribution
     parser.add_argument("--gq_distrib", help = "to compute the GQ (genotype quality) distribution", action = "store_true")
