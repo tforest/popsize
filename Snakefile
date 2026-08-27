@@ -1,176 +1,192 @@
-import pandas as pd
-import os
-import yaml
-
-# Include additionnal functions
 include: "common.smk"
 include: "config/resources.smk"
 
-#popsize config
-#configfile: "config/config.yaml"
-# Add complementary config
-popsize_config = yaml.safe_load(open("workflow/modules/popsize/config/config.yaml"))
-config.update(popsize_config)
+PARAMS = resolve_popsize_params()
+PREFIX, _TOOLS = get_popsize_targets(PARAMS)
+VCF, REF_FASTA = get_snparcher_paths(config)
 
-samples = pd.read_table(config["samples"], sep=",", dtype=str).replace(' ', '_', regex=True)
-REFGENOME = samples['refGenome'].unique().tolist()
+_ALL_TARGETS = [
+    f"results/popsize/SFS_{PREFIX}.fs",
+    f"results/popsize/output_stats/{PREFIX}_PCA.{PARAMS['plot_format']}",
+    f"results/popsize/output_smcpp/{PREFIX}.final.json" if "smcpp" in _TOOLS else [],
+    f"results/popsize/output_stairwayplot2/{PREFIX}/{PREFIX}.final.summary" if "swp2" in _TOOLS else [],
+    f"results/popsize/output_dadi/{PREFIX}.InferDM.bestfits" if "dadi" in _TOOLS else [],
+    f"results/popsize/output_psmc/{PREFIX}.eps" if "psmc" in _TOOLS else [],
+    f"results/popsize/output_msmc2/{PREFIX}_msmc2.final.txt" if "msmc2" in _TOOLS else [],
+    f"results/popsize/{PREFIX}_combined_plot.{PARAMS['plot_format']}",
+]
 
 rule all:
     input:
-        expand("results/{refGenome}/popsize/SFS_{prefix}.fs", refGenome=REFGENOME, prefix=config['final_prefix']),
-        expand("results/{refGenome}/popsize/output_stats/{prefix}_PCA.png", refGenome=REFGENOME, prefix=config['final_prefix']),
-        *(expand("results/{refGenome}/popsize/output_smcpp/{prefix}.final.json", refGenome=REFGENOME, 
-        prefix=config['final_prefix']) if "smcpp" in config['popsize_tools'] else []),
-        *(expand("results/{refGenome}/popsize/output_stairwayplot2/{prefix}/{prefix}.final.summary", refGenome=REFGENOME, 
-        prefix=config['final_prefix']) if "swp2" in config['popsize_tools'] else []),
-        # Wait for dadi output if used in config
-        *(expand("results/{refGenome}/popsize/output_dadi/{prefix}.InferDM.bestfits", refGenome=REFGENOME, 
-        prefix=config['final_prefix']) if "dadi" in config['popsize_tools'] else []),
-        # Wait for PSMC output if used in config
-        *(expand("results/{refGenome}/popsize/output_psmc/{prefix}.eps", refGenome=REFGENOME, 
-        prefix=config['final_prefix']) if "psmc" in config['popsize_tools'] else []),
-        # Wait for MSMC2 output if used in config
-        *(expand("results/{refGenome}/popsize/output_msmc2/{prefix}_msmc2.final.txt", refGenome=REFGENOME, 
-        prefix=config['final_prefix']) if "msmc2" in config['popsize_tools'] else [])
+        _ALL_TARGETS
+
+
+rule done:
+    input:
+        _ALL_TARGETS
+    output:
+        touch("results/popsize/.done"),
+
+
+rule decompress_reference:
+    input:
+        ref=REF_FASTA,
+    output:
+        ref="results/popsize/ref.fa",
+    shell:
+        "gzip -dc {input.ref} > {output.ref}"
+
 
 rule init_module:
-    """
-    intial checks and creates the config file
-    """
     input:
-        vcf = "results/{refGenome}/{prefix}_raw.vcf.gz",
-        results_folder = "results/{refGenome}",
-        config_template = "workflow/modules/popsize/config/deminfhelper_template.yml"
+        vcf=VCF,
     output:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml"
+        config_file=f"results/popsize/{PREFIX}_deminfhelper.yml",
     run:
-        build_deminfhelper_config(results_folder = input.results_folder, vcf_file = input.vcf,
-        prefix = config['final_prefix'], output = output.config_file, global_config = config, module_config = input.config_template)
+        build_deminfhelper_config(
+            out_dir="results/popsize",
+            vcf_file=input.vcf,
+            ref_fasta="results/popsize/ref.fa",
+            prefix=PREFIX,
+            output=output.config_file,
+            params=PARAMS,
+        )
+
 
 rule compute_sfs:
-    """
-    computes sfs from the VCF
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
     output:
-        sfs_file = "results/{refGenome}/popsize/SFS_{prefix}.fs"
+        sfs_file=f"results/popsize/SFS_{PREFIX}.fs",
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --sfs --config_file {input.config_file}"
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --sfs --config_file {input.config_file} ;"
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_sfs"
+
 
 rule stairwayplot2:
-    """
-    run stairwayplot2 using the generated config
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        sfs_file = "results/{refGenome}/popsize/SFS_{prefix}.fs"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        sfs_file=f"results/popsize/SFS_{PREFIX}.fs",
     output:
-        stairwayplot2_summary = "results/{refGenome}/popsize/output_stairwayplot2/{prefix}/{prefix}.final.summary"
+        stairwayplot2_summary=f"results/popsize/output_stairwayplot2/{PREFIX}/{PREFIX}.final.summary",
     conda:
         "envs/deminfhelper.yml"
     resources:
-        mem_mb = lambda wildcards, attempt: attempt * resources['swp2']['mem_mb']
+        mem_mb=lambda wildcards, attempt: attempt * resources['swp2']['mem_mb']
     threads:
         resources['swp2']['threads']
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --stairwayplot2 ;"+ \
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_stairwayplot2" 
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --stairwayplot2 ;"
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_stairwayplot2"
+
 
 rule smcpp:
-    """
-    run smc++ using the generated config
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        vcf_index = "results/{refGenome}/{prefix}_raw.vcf.gz.tbi"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        vcf_index=f"{VCF}.tbi",
     output:
-        smcpp_summary = "results/{refGenome}/popsize/output_smcpp/{prefix}.final.json"
+        smcpp_summary=f"results/popsize/output_smcpp/{PREFIX}.final.json",
     conda:
         "envs/smcpp.yml"
-    resources: mem_mb = lambda wildcards, attempt: attempt * resources['smcpp']['mem_mb']
-    threads: resources['smcpp']['threads']
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * resources['smcpp']['mem_mb']
+    threads:
+        resources['smcpp']['threads']
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --cpus {threads} --smcpp ;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --cpus {threads} --smcpp ;"
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_smcpp"
-        
+
+
 rule dadi:
-    """
-    run dadi using the generated config
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        sfs_file = "results/{refGenome}/popsize/SFS_{prefix}.fs"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        sfs_file=f"results/popsize/SFS_{PREFIX}.fs",
     output:
-        dadi_summary = "results/{refGenome}/popsize/output_dadi/{prefix}.InferDM.bestfits"
+        dadi_summary=f"results/popsize/output_dadi/{PREFIX}.InferDM.bestfits",
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --dadi ;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --dadi ;"
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_dadi"
 
+
 rule psmc:
-    """
-    run psmc using the generated config
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        vcf = "results/{refGenome}/{prefix}_raw.vcf.gz",
-        vcf_index = "results/{refGenome}/{prefix}_raw.vcf.gz.tbi",
-        ref_genome = "results/{refGenome}/data/genome/{refGenome}.fna"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        vcf=VCF,
+        vcf_index=f"{VCF}.tbi",
+        ref_genome="results/popsize/ref.fa",
     output:
-        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final"
-    threads: resources['psmc']['threads']
+        psmc_output=f"results/popsize/output_psmc/{PREFIX}_combined.psmc.final",
+    params:
+        psmc_kwargs=PARAMS["psmc_kwargs"],
+    threads:
+        resources['psmc']['threads']
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --psmc"
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} "
+        "--psmc_kwargs '{params.psmc_kwargs}' --psmc"
+
 
 rule psmc_plot:
-    """
-    produce psmc plot 
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        psmc_output = "results/{refGenome}/popsize/output_psmc/{prefix}_combined.psmc.final"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        psmc_output=f"results/popsize/output_psmc/{PREFIX}_combined.psmc.final",
     output:
-        psmc_figure = "results/{refGenome}/popsize/output_psmc/{prefix}.eps"
+        psmc_figure=f"results/popsize/output_psmc/{PREFIX}.eps",
+    params:
+        plot_psmc_kwargs=PARAMS["plot_psmc_kwargs"],
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_psmc"
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} "
+        "--plot_psmc_kwargs '{params.plot_psmc_kwargs}' --plot_psmc"
+
+
+rule combined_plot:
+    input:
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        dadi=f"results/popsize/output_dadi/{PREFIX}.InferDM.bestfits" if "dadi" in _TOOLS else [],
+        smcpp=f"results/popsize/output_smcpp/{PREFIX}.final.json" if "smcpp" in _TOOLS else [],
+        swp2=f"results/popsize/output_stairwayplot2/{PREFIX}/{PREFIX}.final.summary" if "swp2" in _TOOLS else [],
+        msmc2=f"results/popsize/output_msmc2/{PREFIX}_msmc2.final.txt" if "msmc2" in _TOOLS else [],
+        psmc=f"results/popsize/output_psmc/{PREFIX}.eps" if "psmc" in _TOOLS else [],
+    output:
+        combined_plot=f"results/popsize/{PREFIX}_combined_plot.{PARAMS['plot_format']}",
+    conda:
+        "envs/deminfhelper.yml"
+    shell:
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --combined_plot"
+
 
 rule msmc2:
-    """
-    run msmc2 using the generated config
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        vcf = "results/{refGenome}/{prefix}_raw.vcf.gz"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        vcf=VCF,
     output:
-        msmc2_output = "results/{refGenome}/popsize/output_msmc2/{prefix}_msmc2.final.txt"
-    resources: mem_mb = lambda wildcards, attempt: attempt * resources['msmc2']['mem_mb']
-    threads: resources['msmc2']['threads']
+        msmc2_output=f"results/popsize/output_msmc2/{PREFIX}_msmc2.final.txt",
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * resources['msmc2']['mem_mb']
+    threads:
+        resources['msmc2']['threads']
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --msmc2 ;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --msmc2 ;"
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --plot_msmc2"
 
+
 rule statistics:
-    """
-    Compute some statistics like PCA or Genotyping Quality distribution
-    """
     input:
-        config_file = "results/{refGenome}/popsize/{prefix}_deminfhelper.yml",
-        vcf = "results/{refGenome}/{prefix}_raw.vcf.gz"
+        config_file=ancient(f"results/popsize/{PREFIX}_deminfhelper.yml"),
+        vcf=VCF,
     output:
-        pca_output = "results/{refGenome}/popsize/output_stats/{prefix}_PCA.png"
+        pca_output=f"results/popsize/output_stats/{PREFIX}_PCA.{PARAMS['plot_format']}",
     conda:
         "envs/deminfhelper.yml"
     shell:
-        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --pca ;"+ \
+        "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --pca ;"
         "python3 workflow/modules/popsize/scripts/deminfhelper.py --config_file {input.config_file} --gq_distrib"
-        

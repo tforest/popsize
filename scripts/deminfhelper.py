@@ -126,7 +126,7 @@ def parse_args():
     parser.add_argument("--smcpp", help = "run smcpp", action = "store_true")
     parser.add_argument("--plot_smcpp", help = "to plot smcpp inference", action = "store_true")
     parser.add_argument("--combined_plot", help = "to plot all inferences on the same graph", action = "store_true")
-    parser.add_argument("--plot_format", help = "Output format for plots (default: png)", type=str, default="png", choices=["png", "svg"])
+    parser.add_argument("--plot_format", help = "Output format for plots (default: png)", type=str, choices=["png", "svg"])
     parser.add_argument("--folded", help = "Fold the SFS. Default: True", action = "store_true", default=True)
     # Statistics
     # PCA
@@ -201,6 +201,7 @@ def main():
             'msmc2_kwargs': args.msmc2_kwargs,
             'psmc_kwargs': args.psmc_kwargs,
             'plot_psmc_kwargs': args.plot_psmc_kwargs,
+            'plot_format': args.plot_format,
             'mask': args.mask,
             "missingness_by_sample": args.missingness_by_sample,
             "missingness_by_site": args.missingness_by_site,
@@ -219,15 +220,14 @@ def main():
             param["n_"+ p] = len(param[p])
             param["sample_size"] += param["n_" + p]
 
-    # CLI args not sourced from config (always take the CLI value)
-    param["plot_format"] = args.plot_format
-
     # loop over command line args
     for arg_name in vars(args):
        arg_value = getattr(args, arg_name)
        if arg_name in param.keys() and arg_value is not None:
            # command args value overwrite params in config file
            param[arg_name] = arg_value
+    # fallback if neither the config file nor the CLI set it
+    param.setdefault("plot_format", "png")
     if param["missingness_by_site"] is None or param["missingness_by_site"] > param["sample_size"]:
         param["missingness_by_site"] = 0
     #sfs size after missingness filter, if uneven then nb of diploid indiviuals is sample_size - param["missingness_by_site"]//2 - 1 else  param["missingness_by_site"] - n//2
@@ -397,7 +397,8 @@ def main():
             pca_from_vcf(popid = p, vcf_file = param["vcf"],
                          nb_samples = param["n_"+p],
                          out_dir = param["out_dir_stats"],
-                         mem=param["mem"])
+                         mem=param["mem"],
+                         plot_format=param["plot_format"])
     ##SMC++
     if args.smcpp:
         contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff=param["length_cutoff"], contig_regex=param["contig_filter"])
@@ -426,11 +427,13 @@ def main():
                  out_dir = param["out_dir_psmc"], mu = param["mut_rate"], gen_time = param["gen_time"], kwargs = param["psmc_kwargs"])
     # Plot SFS
     if args.plot_sfs:
+        if not os.path.exists(param["out_dir_stats"]):
+            os.makedirs(param["out_dir_stats"])
         SFS_dict = {}
         for p in param["name_pop"]:
             sfs_list = parse_sfs(param["path_to_sfs"])
             SFS_dict[param["name_pop"][0]] = sfs_list
-            barplot_sfs(sfs = SFS_dict[p], output_file = param["out_dir_sfs"]+"SFS_"+p+".png", title = "SFS "+p, transformed = False )
+            barplot_sfs(sfs = SFS_dict[p], output_file = param["out_dir_stats"]+"SFS_"+p+"."+param["plot_format"], title = "SFS "+p, transformed = False )
 
 
     # Plot PCA
