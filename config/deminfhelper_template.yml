@@ -1,0 +1,57 @@
+# popsize module configuration. 
+# NOTE: This is the single place to set every
+# tunable parameter for the module.
+# Some values like vcf/ref paths, sequence length, 
+# sample list, or output directories are deduced 
+# from the snpArcher run itself using common.smk. 
+
+### POP. DEFINITION
+pop_name: picus_viridis
+
+# generation time (avg. reprod. time in years)
+gen_time: 5.6
+# mutation rate (per base per generation)
+mut_rate: 5e-09
+
+### FILTERS
+# contigs longer than this are kept
+length_cutoff: 10000
+# regex; keep only contigs whose name matches
+contig_filter: "CM.*"
+
+### RESOURCES
+mem: 4096
+
+### PLOTTING
+# applies to every plot except PSMC's, which is rendered by psmc's own
+# perl script (plot_psmc.pl) and is always .eps
+plot_format: svg
+
+### SFS
+folded: True
+
+### PCA
+n_clust_kmeans: 3
+
+### TOOLS
+# Inferences to run (full list or subset): dadi, swp2, psmc, msmc2, smcpp
+popsize_tools: dadi,swp2,psmc,msmc2,smcpp
+
+# Dadi
+optimizations: 1000
+p0: 1, 1, 0.2, 1
+lower_bound: 0.01, 0.01, 0.005, 0.1
+upper_bound: 10, 4, 5, 10
+
+# MSMC2
+msmc2_kwargs: -i 25 -p 1*2+25*1+1*2+1*3
+
+# PSMC
+psmc_kwargs: -N25 -t15 -r5 -p "4+25*2+4+6"
+# -X caps the x-axis ()
+# -Y caps the y-axis (effective pop size, x1e4).
+plot_psmc_kwargs: -x 10**4 -Y 11
+
+# Stairway Plot 2
+path_to_stairwayplot2: workflow/modules/popsize/bin/stairway_plot_es/
+blueprint_template: workflow/modules/popsize/config/swp2_template.blueprint
