@@ -163,8 +163,8 @@ use rule * from popsize exclude all as popsize_*
 ```
 
 4. **Configuration of the popsize module:**
-   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/config.yaml` file to fit your needs.
-   - Here is an example `config.yaml`:
+   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/deminfhelper_template.yml` file to fit your needs.
+   - Here is an example `deminfhelper_template.yml`:
 
 ```yaml
 ### POP. DEFINITION
