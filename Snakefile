@@ -122,6 +122,8 @@ rule psmc:
         psmc_output=f"results/popsize/output_psmc/{PREFIX}_combined.psmc.final",
     params:
         psmc_kwargs=PARAMS["psmc_kwargs"],
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * resources['psmc']['mem_mb']
     threads:
         resources['psmc']['threads']
     conda:
