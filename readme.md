@@ -1,5 +1,3 @@
-
-
 # popsize module for snpArcher
 
 ## Overview
@@ -8,7 +6,7 @@ The `popsize` module is an extension of the [snpArcher](https://github.com/harva
 
 ### Purpose
 
-The primary goal of the `popsize` module is to facilitate the estimation of population size changes, addressing key assumptions in population genetics. Users can choose from a suite of powerful demographic inference tools tailored for various data scenarios. The modular design allows customization and parameter adjustments based on specific analysis needs.
+The primary goal of the `popsize` module is to facilitate the estimation of population size changes, addressing key assumptions in population genetics. Users can choose from a suite of powerful demographic inference tools tailored for various data scenarios. The modular design allows customization and parameter adjustments based on specific analysis needs. In the end, a combined plot presenting an overlay of all the methods used is generated, bringing a comparative visualization to this kind of analysis.
 
 ### Key Features
 
@@ -54,121 +52,182 @@ The primary goal of the `popsize` module is to facilitate the estimation of popu
 
 ## Usage
 
-1. **Installation:**
-   - Get snpArcher. You can clone the repository straight from Github to get the latest version, however, popsize has been tested for the snapshot of August, 15th, 2024. So we recommend to get this one for running the test dataset:
+1. **Installation of snpArcher:**
+   - This module has been tested with snpArcher v2.2. For now this is the only stable version for which this module is supported.
      ```bash
-     wget https://github.com/harvardinformatics/snpArcher/archive/8a0921d9dd094a57570c70815453a93da5a2421d.zip
+     wget https://github.com/harvardinformatics/snparcher/archive/refs/tags/v2.2.zip
+     # unzip it
+     unzip v2.2.zip
      # Rename the directory to make it more convenient
-     mv snpArcher-8a0921d9dd094a57570c70815453a93da5a2421d snpArcher
-     ```
-	
-   - Then unzip it and clone the repository of the `popsize` module under `snpArcher/workflow/modules/`:
-
-     ```bash
-     cd snpArcher/workflow/modules/
-     git clone https://github.com/tforest/popsize.git
+     mv snparcher-2.2 snpArcher
      ```
 
-2. **Configuration of the popsize module:**
-   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/config.yaml` file to fit your needs.
-   - Important settings to define in `config.yaml`:
-
-     ```yaml
-     ## Popsize options
-     # popsize modules to use for inference; can be : dadi, swp2, msmc2, psmc, or smcpp.
-     # Specify multiple tools as comma-separated: "dadi, swp2, psmc" for example.
-     popsize_tools: "dadi, swp2, msmc2, psmc, smcpp"
-     # specify generation time for the studied species.
-     gen_time: 5.6
-     # specify the average per site per generation mutation rate.
-     mut_rate: 5e-9
-     # specify whether to use folded SFS or not. 
-     folded: True
-     # select the number of runs dadi is executing for its optimization phase 
-     dadi_optimizations: 1000
-     ```
-
-3. **Integration with snpArcher:**
-   - Add the following lines to the default snpArcher workflow (`snparcher/workflow/Snakefile`):
-
-     ```snakemake
-     module popsize:
-         snakefile:
-             "modules/popsize/Snakefile"
-         config:
-             config
-
-     use rule * from popsize as popsize_*
-     ```
-
-4. **Configuration of snpArcher:**
+2. **Configuration of snpArcher:**
 
 - Edit the config/config.yaml file on this lines:
 
- ```yaml
+```yaml
 samples: "config/samples.csv"
-final_prefix: "picus_viridis"
-bigtmp: "/path/to/big/tmp/"
-
-# low coverage options (< 10x)
-# Comment those lines for the test dataset
-#minP: 1
-#minD: 1
-
-# high coverage options (> 10x)
-# Uncomment those lines for the test dataset
-minP: 2
-minD: 4
+name: "picus_viridis"
+source: "GCA_033816785.1"  # Can be a refseq/genbank accession, url, or path
 ```
- - Create a config/samples.csv file containing information about your samples, for example:
- ```csv
-BioSample,LibraryName,Run,refGenome,BioProject,lat,long
-SAMN38508702,JF5345,SRR27195338,GCA_033816785.1,PRJNA1027323,45.06017809409504,3.9699892711638065
-SAMN38508701,JF5325,SRR27195328,GCA_033816785.1,PRJNA1027323,46.77012124990864,1.5199570846552257
-SAMN38508699,JF5258,SRR27195330,GCA_033816785.1,PRJNA1027323,47.53014126080718,7.480021457672387
-SAMN38508698,JF5191,SRR27195331,GCA_033816785.1,PRJNA1027323,48.66014527662619,2.649957084655226
-SAMN38508697,JF5180,SRR27195332,GCA_033816785.1,PRJNA1027323,48.92013747575708,2.799967813491419
-SAMN38508696,MO1993190,SRR27195333,GCA_033816785.1,PRJNA1027323,47.67014088330744,-1.909978542327613
-SAMN38508695,MO1991186,SRR27195334,GCA_033816785.1,PRJNA1027323,48.740152121316086,2.1700321865085805
-SAMN38508694,MO1991185,SRR27195335,GCA_033816785.1,PRJNA1027323,45.930167901473105,6.930021457672388
-SAMN38508693,MO19711091,SRR27195339,GCA_033816785.1,PRJNA1027323,47.5501050000613,-0.1099570846552259
-SAMN38508692,MO19711090,SRR27195341,GCA_033816785.1,PRJNA1027323,48.70013808027695,2.130010728836193 
+ - Create a ```config/samples.csv``` file containing information about your samples, for example:
+```csv
+sample_id,library_id,input_type,input
+SAMN38508702,JF5345,srr,SRR27195338
+SAMN38508701,JF5325,srr,SRR27195328
+SAMN38508699,JF5258,srr,SRR27195330
+SAMN38508698,JF5191,srr,SRR27195331
+SAMN38508697,JF5180,srr,SRR27195332
+SAMN38508696,MO1993190,srr,SRR27195333
+SAMN38508695,MO1991186,srr,SRR27195334
+SAMN38508694,MO1991185,srr,SRR27195335
+SAMN38508693,MO19711091,srr,SRR27195339
+SAMN38508692,MO19711090,srr,SRR27195341
 ```
 
 *This is an example dataset using Picus viridis samples. (Forest et al., 2024)*
 
 You can find more information about the sample sheet in [snpArcher documentation](https://snparcher.readthedocs.io/en/latest/setup.html#creating-a-sample-sheet).
- - Edit the profiles/slurm/config.yaml file on this lines:
+ - Edit the workflow-profiles/default/config.yaml file on this lines:
 
- ```yaml
-latency-wait: 300 # Wait N seconds for output files due to latency
+```yaml
+# slurm
+executor: slurm
+jobs: 100 # Have up to N jobs submitted at any given time
+latency-wait: 900 # Wait N seconds for output files due to latency
 retries: 3 # Retry jobs N times.
-mem_mb: attempt * 16000
-# If your cluster support no wall time, you could just comment the runtime line.
-# If not, and you would like to try the test dataset, you should aim to set
-# the runtime up to 3 days, or you would encounter a timeout error.
-runtime: 720 # In minutes, here 12h
-slurm_partition: YOUR_PARTITION
+
+tmpdir: "/your/tmp/dir"
+...
+slurm_partition: "YOUR_PARTITION"
+...
+runtime: 720m # In minutes, here 12h
+...
+set-resources:
+  # Alignment
+  bwa_mem: 
+    mem_mb: attempt * 16000
+    # change runtime to 480m
+    runtime: 480m
+    
+  joint_genomics_db_import:
+    mem_mb: attempt * 64000
+    mem_mb_reduced: attempt * 48000
+    # change runtime to 
+    runtime: 1440m
 ```
      
-4. **Execution:**
+3. **Do a first run of snpArcher:**
 
-- Create a conda env with snakemake>=8.20.
+- Create a conda env with snakemake>=9.19.
 
  - Once you activated the conda environment, while in snpArcher/ top directory, run snpArcher until the end of the process. (ie. creation of the VCFs):
 
-     ```snakemake
-     snakemake --workflow-profile profiles/slurm
-     ```
+```bash
+snakemake --profile ./workflow-profiles/default
+```
 
-- Once snpArcher executed properly, you can run popsize using snpArcher output:
-     ```snakemake
-     snakemake --workflow-profile profiles/slurm --forcerun popsize_all
-     ```
+2. **Installation of the *popsize* module:**	
+- Clone the repository of the `popsize` module under `snpArcher/workflow/modules/`:
+
+```bash
+cd snpArcher/workflow/modules/
+git clone https://github.com/tforest/popsize.git
+```
+
+3. **Integration with snpArcher:**
+
+- In the snpArcher general Snakefile (`snparcher/workflow/Snakefile`), edit  ```rule all``` under the "Default target" category :
+```yaml
+rule all:
+    """Default target: full pipeline."""
+    default_target: True
+    input:
+        RAW_VCF,
+        ...
+        # ADD THIS LINE
+        "results/popsize/.done",
+```
+
+- And add the following lines to the default snpArcher workflow (`snparcher/workflow/Snakefile`):
+
+```yaml
+module popsize:
+snakefile:
+        "modules/popsize/Snakefile"
+    config:
+        config
+
+use rule * from popsize exclude all as popsize_*
+```
+
+4. **Configuration of the popsize module:**
+   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/config.yaml` file to fit your needs.
+   - Here is an example `config.yaml`:
+
+```yaml
+### POP. DEFINITION
+pop_name: picus_viridis
+
+# generation time (avg. reprod. time in years)
+gen_time: 5.6
+# mutation rate (per base per generation)
+mut_rate: 5e-09
+
+### FILTERS
+# contigs longer than this are kept
+length_cutoff: 10000
+# regex; keep only contigs whose name matches
+contig_filter: "CM.*"
+
+### DEFAULT RESOURCES
+mem: 4096
+
+### PLOTTING
+# applies to every plot except PSMC's, which is rendered by psmc's own
+# perl script (plot_psmc.pl) and is always .eps
+plot_format: svg
+
+### SFS
+folded: True
+
+### PCA
+n_clust_kmeans: 3
+
+### TOOLS
+# Inferences to run (full list or subset): dadi, swp2, psmc, msmc2, smcpp
+popsize_tools: dadi,swp2,psmc,msmc2,smcpp
+
+# Dadi
+optimizations: 1000
+p0: 1, 1, 0.2, 1
+lower_bound: 0.01, 0.01, 0.005, 0.1
+upper_bound: 10, 4, 5, 10
+
+# MSMC2
+msmc2_kwargs: -i 25 -p 1*2+25*1+1*2+1*3
+
+# PSMC
+psmc_kwargs: -N25 -t15 -r5 -p "4+25*2+4+6"
+# -X caps the x-axis ()
+# -Y caps the y-axis (effective pop size, x1e4).
+plot_psmc_kwargs: -x 10**4 -Y 11
+
+# Stairway Plot 2
+path_to_stairwayplot2: workflow/modules/popsize/bin/stairway_plot_es/
+blueprint_template: workflow/modules/popsize/config/swp2_template.blueprint
+```
+
+- Once snpArcher executed properly and all the files are created (specifically the VCFs under results/vcfs), you can run popsize by re-running snpArcher and it will generate the missing output created by the module:
+
+```bash
+snakemake --profile ./workflow-profiles/default
+```
 
 ## Dependencies
 
-- Snakemake 8.20.x
+- Snakemake >= 9.19
 
 
 ## Contribution
