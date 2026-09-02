@@ -233,12 +233,10 @@ def main():
     #sfs size after missingness filter, if uneven then nb of diploid indiviuals is sample_size - param["missingness_by_site"]//2 - 1 else  param["missingness_by_site"] - n//2
     param["sfs_size"] = param["sample_size"] - (param["missingness_by_site"] % 2 + param["missingness_by_site"] // 2)
     ## CREATING DIRECTORIES
-    if not os.path.exists(param["out_dir"]):
-        os.makedirs(param["out_dir"])
+    os.makedirs(param["out_dir"], exist_ok=True)
 
     if args.smcpp or args.stairwayplot2 or args.dadi:
-        if not os.path.exists(param["final_out_dir"]):
-            os.makedirs(param["final_out_dir"])
+        os.makedirs(param["final_out_dir"], exist_ok=True)
 
     # Compute the SFS
     if args.sfs or args.gq_distrib:
@@ -327,8 +325,7 @@ def main():
 
     # Run Stairwayplot2
     if args.stairwayplot2:
-        if not os.path.exists(param["out_dir_stairwayplot2"]):
-            os.makedirs(param["out_dir_stairwayplot2"])
+        os.makedirs(param["out_dir_stairwayplot2"], exist_ok=True)
         if args.sfs == False:
             if "path_to_sfs" not in param.keys():
                 print("--sfs flag or path_to_sfs missing")
@@ -358,8 +355,7 @@ def main():
 
     # Run dadi
     if args.dadi:
-        if not os.path.exists(param["out_dir_dadi"]):
-            os.makedirs(param["out_dir_dadi"])
+        os.makedirs(param["out_dir_dadi"], exist_ok=True)
         if args.sfs == False:
             for p in param["name_pop"]:
                 if "path_to_sfs" not in param.keys():
@@ -384,15 +380,13 @@ def main():
                                           plot_format=param["plot_format"])
     #GQ distribution
     if args.gq_distrib:
-        if not os.path.exists(param["out_dir_gq_distrib"]):
-            os.makedirs(param["out_dir_gq_distrib"])
+        os.makedirs(param["out_dir_gq_distrib"], exist_ok=True)
         GQ_dict = res_pars[1]
         for p in param["name_pop"]:
             plot_distrib_gq(popid = p, gq = GQ_dict[p], out_dir_gq = param["out_dir_gq_distrib"], plot_format=param["plot_format"])
     # PCA
     if args.pca:
-        if not os.path.exists(param["out_dir_stats"]):
-            os.makedirs(param["out_dir_stats"])
+        os.makedirs(param["out_dir_stats"], exist_ok=True)
         for p in param["name_pop"]:
             pca_from_vcf(popid = p, vcf_file = param["vcf"],
                          nb_samples = param["n_"+p],
@@ -402,8 +396,7 @@ def main():
     ##SMC++
     if args.smcpp:
         contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff=param["length_cutoff"], contig_regex=param["contig_filter"])
-        if not os.path.exists(param["out_dir_smcpp"]):
-            os.makedirs(param["out_dir_smcpp"])
+        os.makedirs(param["out_dir_smcpp"], exist_ok=True)
         for p in param["name_pop"]:
             smcpp(contigs = contigs, popid = p, pop_ind = param[p], vcf = param["vcf"], \
                   out_dir = param["out_dir_smcpp"], mu = param["mut_rate"], 
@@ -411,8 +404,7 @@ def main():
     ##MSMC2
     if args.msmc2:
         contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"],  contig_regex=param["contig_filter"])
-        if not os.path.exists(param["out_dir_msmc2"]):
-            os.makedirs(param["out_dir_msmc2"])
+        os.makedirs(param["out_dir_msmc2"], exist_ok=True)
         for p in param["name_pop"]:
             msmc2(contigs = contigs, popid = p, pop_ind = param[p], vcf = param["vcf"], \
                   out_dir = param["out_dir_msmc2"], mu = param["mut_rate"], gen_time = param["gen_time"],
@@ -420,15 +412,13 @@ def main():
     ##PSMC
     if args.psmc:
         contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff = param["length_cutoff"],  contig_regex=param["contig_filter"])
-        if not os.path.exists(param["out_dir_psmc"]):
-            os.makedirs(param["out_dir_psmc"])
+        os.makedirs(param["out_dir_psmc"], exist_ok=True)
         for p in param["name_pop"]:
             psmc(ref_genome = param["ref_genome"], contigs = contigs, popid = p, pop_ind = param[p], vcf = param["vcf"], \
                  out_dir = param["out_dir_psmc"], mu = param["mut_rate"], gen_time = param["gen_time"], kwargs = param["psmc_kwargs"])
     # Plot SFS
     if args.plot_sfs:
-        if not os.path.exists(param["out_dir_stats"]):
-            os.makedirs(param["out_dir_stats"])
+        os.makedirs(param["out_dir_stats"], exist_ok=True)
         SFS_dict = {}
         for p in param["name_pop"]:
             sfs_list = parse_sfs(param["path_to_sfs"])
@@ -446,8 +436,7 @@ def main():
 
     # Plot StairwayPlot2
     if args.plot_stairwayplot2 and args.stairwayplot2==False:
-        if not os.path.exists(param["out_dir_stairwayplot2"]):
-            os.makedirs(param["out_dir_stairwayplot2"])
+        os.makedirs(param["out_dir_stairwayplot2"], exist_ok=True)
         for p in param["name_pop"]:
             if "".join(["summary_file_stw"]) not in param.keys():
                 print("path to the population final summary file missing")

@@ -471,8 +471,7 @@ def pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy = 2,
 
     """
     plink_out_dir = out_dir+"/plink/"
-    if not os.path.exists(plink_out_dir):
-        os.makedirs(plink_out_dir)
+    os.makedirs(plink_out_dir, exist_ok=True)
     # need to use bcftools to add IDs to replace the "." with unique IDs for each variant 
     cmd1 = "".join(["bcftools annotate --set-id +'%CHROM:%POS' ", \
                     vcf_file, " -Oz -o ", \
