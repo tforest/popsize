@@ -114,7 +114,7 @@ def barplot_sfs(sfs, output_file, xlab = "Allele frequency", ylab = "SNP counts"
     x = [x+1 for x in range(len(sfs))]
     y = sfs_val
     # plt.xticks(x)
-    plt.bar(x, y)
+    plt.bar(x, y, color='grey')
     plt.ylabel(ylab)
     plt.xlabel(xlab)
     plt.title(title)
@@ -317,7 +317,7 @@ def plot_distrib_gq(popid, gq, out_dir_gq, plot_format="png"):
     names = list(gq.keys())
     values = list(gq.values())
     plt.figure(figsize = [10, 5])
-    plt.bar(range(len(gq)), values, tick_label=names)
+    plt.bar(range(len(gq)), values, tick_label=names, color='grey')
     plt.title(f"{popid} GQ distribution")
     plt.xlabel("GQ")
     plt.ylabel('Numbre of sites')
@@ -392,7 +392,7 @@ def genotyping_coverage_plot(popid, snp_coverage, out_dir_stats, nb_plots=None, 
                     x_values = x_values_binned
                     y_values = y_values_binned
                 
-                axes[i // 2, i % 2].plot(x_values, y_values, label="Chromosome " + chrm)
+                axes[i // 2, i % 2].plot(x_values, y_values, label="Chromosome " + chrm, color='grey')
                 axes[i // 2, i % 2].set_xlabel("Start Position of Segment")
                 # axes[i // 2, i % 2].set_ylabel("Mean Variants Prop")
                 # axes[i // 2, i % 2].set_title("Chromosome " + chrm + " Average Variant Prop. per Segment")
@@ -813,12 +813,40 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9, plot_
             print(f"Sample: {sample_name}, Cluster: {cluster}")
             csv_file.write(f'{sample_name},{cluster}\n')  # Write each sample and its cluster to the file
 
-    # Plot the first two principal components
+    # Plot the first two principal components, colored by cluster
     plt.figure(figsize=(8, 6))
-    plt.scatter(eigenvectors[:, 0], eigenvectors[:, 1], c='blue', marker='o', s=50)
-    plt.title(f'PCA: PC1 vs PC2 ({num_components} components)')
+    cmap = plt.cm.get_cmap('Set1', n_clusters)
+    for cluster_id in sorted(pca_df['Cluster'].unique()):
+        cluster_data = pca_df[pca_df['Cluster'] == cluster_id]
+        plt.scatter(cluster_data['PC1'], cluster_data['PC2'],
+                    color=cmap(cluster_id), marker='o', s=50,
+                    label=f'Cluster {cluster_id}')
+    plt.title(f'PCA with k={n_clusters} Clusters: PC1 vs PC2 ({num_components} components)')
     plt.xlabel(f'PC1 ({variance_explained[0]:.2f}%)')
     plt.ylabel(f'PC2 ({variance_explained[1]:.2f}%)')
+    plt.legend(title='Cluster', loc='best', fontsize='small')
+    plt.margins(0.12)
+    plt.tight_layout()
+
+    # Label each sample, then hide labels that overlap ones already placed
+    fig = plt.gcf()
+    ax = plt.gca()
+    sample_labels = [
+        ax.annotate(row['Sample'], (row['PC1'], row['PC2']),
+                    xytext=(4, 4), textcoords='offset points', fontsize=7,
+                    clip_on=False)
+        for _, row in pca_df.iterrows()
+    ]
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    kept_bboxes = []
+    for label in sample_labels:
+        bbox = label.get_window_extent(renderer=renderer)
+        if any(bbox.overlaps(kept) for kept in kept_bboxes):
+            label.set_visible(False)
+        else:
+            kept_bboxes.append(bbox)
+
     plt.savefig(out_dir+"/"+popid+f"_PCA.{plot_format}")
 
     # Create a Plotly scatter plot with different symbols for each cluster
@@ -856,7 +884,7 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9, plot_
 
     # Bar plot of explained variance
     plt.figure(figsize=(10, 6))
-    plt.bar(range(1, num_components + 1), variance_explained * 100, color='blue', alpha=0.7)
+    plt.bar(range(1, num_components + 1), variance_explained * 100, color='grey', alpha=0.7)
     plt.xlabel('Number of Components (K)')
     plt.ylabel('Proportion of Explained Variance (%)')
     plt.title(f'Explained Variance by Components ({num_components} components)')

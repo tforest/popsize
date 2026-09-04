@@ -450,7 +450,7 @@ def dadi_output_parse(dadi_output_file):
 
 def pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy = 2,
                  keep_modified_vcf = False, modified_vcf_ram = False, mem=4096,
-                 plot_format="png"):
+                 plot_format="png", n_clusters=9):
     """
     Perform Principal Component Analysis (PCA) on genetic data from a VCF file and generate PCA plots.
 
@@ -495,7 +495,7 @@ def pca_from_vcf(popid, vcf_file, nb_samples, out_dir, ploidy = 2,
     os.system(cmd3)
     # Generate plot
     plots.plot_pca(plink_out_dir+popid+".pca.eigenvec", plink_out_dir+popid+".pca.eigenval", popid = popid, out_dir = out_dir,
-                   plot_format=plot_format)
+                   plot_format=plot_format, n_clusters=n_clusters)
 
 
 def parse_bed(bed_file):
@@ -667,27 +667,25 @@ def first_parsing(PARAM, contigs, mask = None):
 
 import matplotlib.pyplot as plt
 
-# Fonction 1 : Plot simple de "missing_sample"
 def plot_missing_sample(data, PARAM):
     plt.figure(figsize=(6, 4))
-    plt.hist(data, bins='auto', color='tomato', edgecolor='black')
-    plt.title("Histogram of Missing Data Proportions (Sample)")
+    plt.hist(data, bins='auto', color='grey', edgecolor='black')
+    plt.title("Histogram of Missing Data Proportions (Sample-wise)")
     plt.xlabel("Missing Proportion")
-    plt.ylabel("Frequency")
+    plt.ylabel("Frequency (nb samples)")
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     os.makedirs(PARAM ["out_dir_stats"], exist_ok=True)
     plt.savefig(PARAM ["out_dir_stats"] + "missing_sample_histogram." + PARAM.get("plot_format", "png"))
 
-# Fonction 2 : Plot cumulée en fréquence de "missing_site"
 def plot_missing_site_cumulative(data, PARAM):
     cumulative = np.cumsum(data)
-    cumulative_freq = cumulative / cumulative[-1]  # Normaliser
+    cumulative_freq = cumulative / cumulative[-1]
     plt.figure(figsize=(8, 4))
-    plt.plot(range(len(data)), cumulative_freq, marker='o', linestyle='-', color='slateblue')
-    plt.title("Missing Site - Cumulative Frequency (Original Order)")
+    plt.plot(range(len(data)), cumulative_freq, marker='o', linestyle='-', color='grey')
+    plt.title("Missing Site - Cumulative Frequency")
     plt.xlabel("Index")
-    plt.ylabel("Fréquence Cumulée")
+    plt.ylabel("Cumulated freq.")
     plt.grid(True)
     plt.tight_layout()
     os.makedirs(PARAM ["out_dir_stats"], exist_ok=True)

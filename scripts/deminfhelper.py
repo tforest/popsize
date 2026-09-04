@@ -392,7 +392,8 @@ def main():
                          nb_samples = param["n_"+p],
                          out_dir = param["out_dir_stats"],
                          mem=param["mem"],
-                         plot_format=param["plot_format"])
+                         plot_format=param["plot_format"],
+                         n_clusters=param["n_clust_kmeans"])
     ##SMC++
     if args.smcpp:
         contigs = get_contigs_lengths(vcf = param["vcf"], length_cutoff=param["length_cutoff"], contig_regex=param["contig_filter"])
