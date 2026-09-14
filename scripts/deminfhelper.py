@@ -1,5 +1,5 @@
 """
-DemInfHelper v0.2.0
+DemInfHelper v0.2.1
 
 Authors:
 Thomas Forest (thomas.forest1@edu.mnhn.fr)
