@@ -21,7 +21,11 @@ def get_popsize_targets(params):
 
 def get_snparcher_paths(config):
     """vcf/ref paths deduced from the snpArcher run, not user-configurable."""
-    return "results/vcfs/filtered.vcf.gz", f"results/reference/{config['reference']['name']}.fa.gz"
+    if config["modules"]["postprocess"]["enabled"]:
+        vcf = "results/postprocess/filtered.vcf.gz"
+    else:
+        vcf = "results/vcfs/filtered.vcf.gz"
+    return vcf, f"results/reference/{config['reference']['name']}.fa.gz"
 
 
 def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, params):
