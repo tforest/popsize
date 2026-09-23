@@ -22,7 +22,7 @@ def get_popsize_targets(params):
 def get_snparcher_paths(config):
     """vcf/ref paths deduced from the snpArcher run, not user-configurable."""
     if config["modules"]["postprocess"]["enabled"]:
-        vcf = "results/postprocess/filtered.vcf.gz"
+        vcf = "results/postprocess/clean_snps.vcf.gz"
     else:
         vcf = "results/vcfs/filtered.vcf.gz"
     return vcf, f"results/reference/{config['reference']['name']}.fa.gz"
