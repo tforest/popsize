@@ -185,3 +185,4 @@ dependencies:
   - xz=5.4.2=h5eee18b_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hc292b87_0
+  - pyyaml

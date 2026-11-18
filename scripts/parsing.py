@@ -36,6 +36,7 @@ import gzip
 import os
 from matplotlib.pyplot import stem
 import numpy as np
+import yaml
 
 if __package__ is None or __package__ == '':
     import inferences
@@ -136,33 +137,43 @@ def parse_config(config_file, args=None):
     """
     Parse a configuration file and return the configuration parameters as a dictionary.
 
-    This function reads a configuration file line by line and extracts parameter names and values.
-    The resulting dictionary contains configuration parameters with their corresponding values.
+    This function reads the configuration file as YAML and extracts parameter names and
+    values. The resulting dictionary contains configuration parameters with their
+    corresponding values.
+
+    Population membership comes from a single `populations` key: a mapping of
+    population name -> member sample IDs. One entry means a single population
+    (named by that entry's key); more than one entry splits the cohort into that
+    many independently-analyzed populations. An empty/absent list for a name means
+    "use every sample found in the VCF" for that population.
 
     Parameters:
     - config_file (str): The path to the configuration file.
-    - args (dict): The dictionnary of command line arguments. 
+    - args (dict): The dictionnary of command line arguments.
 
     Returns:
     - param (dict): A dictionary containing configuration parameters and values.
 
     """
 
-    param = {}
     with open(config_file, "rt") as config:
-        for line in config:
-            # if the line can be stripped, it's not empty
-            if line.strip():
-                if line[0] != "#":
-                    param[line[:-1].split(": ")[0]] = line[:-1].split(": ")[1].strip()
+        param = yaml.safe_load(config)
 
-    param["folded"]=bool(param["folded"])
-    #param["transformed"]=bool(param["transformed"])
-    param["name_pop"] = param["name_pop"].split(",")
-    param["npop"]=int(param["npop"])
+    param["folded"] = bool(param["folded"])
+
+    populations = param.pop("populations", None)
+    if not isinstance(populations, dict) or not populations:
+        raise ValueError(
+            f"{config_file}: 'populations' must be a mapping of population name -> "
+            "member sample IDs (use 'all' for 'every sample in the VCF')."
+        )
+    param["name_pop"] = list(populations.keys())
+    for p, ids in populations.items():
+        param[p] = get_sample_names(vcf=param["vcf"]) if (not ids or ids == "all") else list(ids)
+
     if "out_dir" not in param:
-        param["out_dir"] = "./" + param["name_pop"][0].strip() + "/"
-    if "n_clust_kmeans" in param and param["n_clust_kmeans"] != None:
+        param["out_dir"] = "./" + param["name_pop"][0] + "/"
+    if "n_clust_kmeans" in param and isinstance(param["n_clust_kmeans"], str):
         param["n_clust_kmeans"] = eval(param["n_clust_kmeans"])
     if "missingness_by_sample" in param:
         param["missingness_by_sample"] = float(param["missingness_by_sample"])
@@ -188,12 +199,6 @@ def parse_config(config_file, args=None):
             param["mask"]=None
     param["sample_size"] = 0
     for p in param["name_pop"]:
-        if p in list(param.keys()):
-            param[p] = [item.strip() for item in param[p].split(",")]
-        else:
-            # if the pop is not defined in the config, the same list
-            # of all samples from the VCF are used for every pop
-            param[p] = get_sample_names(vcf=param["vcf"])
         param["n_"+p] = len(param[p])
         param["sample_size"] += param["n_" + p]
 

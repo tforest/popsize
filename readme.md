@@ -163,12 +163,13 @@ use rule * from popsize exclude all as popsize_*
 ```
 
 4. **Configuration of the popsize module:**
-   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/deminfhelper_template.yml` file to fit your needs.
-   - Here is an example `deminfhelper_template.yml`:
+   - Adjust settings in the `snpArcher/workflow/modules/popsize/config/deminfhelper_config.yml` file to fit your needs.
+   - Here is an example `deminfhelper_config.yml`:
 
 ```yaml
 ### POP. DEFINITION
-pop_name: picus_viridis
+populations:
+  picus_viridis: all
 
 # generation time (avg. reprod. time in years)
 gen_time: 5.6

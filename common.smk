@@ -3,20 +3,40 @@ import gzip
 
 import yaml
 
-_TEMPLATE_PATH = "workflow/modules/popsize/config/deminfhelper_template.yml"
+_TEMPLATE_PATH = "workflow/modules/popsize/config/deminfhelper_config.yml"
 
 
 def resolve_popsize_params():
-    """All module parameters, read from config/deminfhelper_template.yml."""
+    """All module parameters, read from config/deminfhelper_config.yml."""
     with open(_TEMPLATE_PATH) as f:
         return yaml.safe_load(f)
 
 
 def get_popsize_targets(params):
-    """(prefix, tools) from the resolved params, needed at parse time for rule paths."""
-    prefix = params["pop_name"]
+    """(populations, multi_pop, tools) from the resolved params, needed at parse time for rule paths.
+
+    `populations` (name -> member sample IDs) is the single source of truth for
+    population(s), same key deminfhelper.py itself reads when run standalone. One
+    entry means a single population, named by that entry's key -- byte-identical to
+    the module's original single-population behavior. More than one entry splits the
+    cohort into that many independently-computed populations, each its own
+    results/popsize/<name>/ branch.
+    """
+    populations = list(params["populations"].keys())
+    multi_pop = len(populations) > 1
     tools = {t.strip() for t in params["popsize_tools"].split(",") if t.strip()}
-    return prefix, tools
+    return populations, multi_pop, tools
+
+
+def get_population_samples(params, population):
+    """Member sample IDs for a population, or None to use every VCF sample ('all')."""
+    if population not in params["populations"]:
+        raise ValueError(
+            f"Population '{population}' is not declared under 'populations' in "
+            f"deminfhelper_config.yml."
+        )
+    ids = params["populations"][population]
+    return None if (not ids or ids == "all") else list(ids)
 
 
 def get_snparcher_paths(config):
@@ -28,7 +48,7 @@ def get_snparcher_paths(config):
     return vcf, f"results/reference/{config['reference']['name']}.fa.gz"
 
 
-def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, params):
+def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, population, output, params, samples_override=None):
     # parse VCF header: total genotyped length (from ##contig lines) and sample list
     Nseq = 0
     with gzip.open(vcf_file, 'rt') as vcf:
@@ -38,9 +58,20 @@ def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, para
                 contig_length = int(re.split('[=,]', line)[-1][:-2])
                 Nseq += contig_length
             if line.startswith("#CHROM"):
-                samples = ','.join(line.split()[9:])
+                vcf_samples = line.split()[9:]
+                if samples_override is not None:
+                    missing = set(samples_override) - set(vcf_samples)
+                    if missing:
+                        raise ValueError(
+                            f"Population sample(s) not found in {vcf_file}: {sorted(missing)}"
+                        )
+                    samples = samples_override
+                else:
+                    samples = vcf_samples
                 break
             line = vcf.readline()
+
+    samples_str = ", ".join(samples)
 
     lines = [
         f"out_dir: {out_dir}/",
@@ -49,11 +80,9 @@ def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, para
         f"ref_genome: {ref_fasta}",
         "## L: effective sequence length genotyped",
         f"L: {Nseq}",
-        "## Population(s)",
-        f"name_pop: {prefix}",
-        "npop: 1",
-        "# POP 1",
-        f"{prefix}: {samples}",
+        "## Population",
+        "populations:",
+        f"  {population}: [{samples_str}]",
         "# PARAM",
         f"gen_time: {params['gen_time']}",
         f"mut_rate: {params['mut_rate']}",
@@ -66,9 +95,9 @@ def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, para
         "## Filtering contigs by name",
         f"contig_filter: {params['contig_filter']}",
         "## SFS if previously computed",
-        f"path_to_sfs: {out_dir}/SFS_{prefix}.fs",
+        f"path_to_sfs: {out_dir}/SFS_{population}.fs",
         f"out_dir_stairwayplot2: {out_dir}/output_stairwayplot2/",
-        f"summary_file_stw: {out_dir}/output_stairwayplot2/{prefix}/{prefix}.final.summary",
+        f"summary_file_stw: {out_dir}/output_stairwayplot2/{population}/{population}.final.summary",
         "## Dadi",
         f"out_dir_dadi: {out_dir}/output_dadi/",
         f"optimizations: {params['optimizations']}",
@@ -80,7 +109,7 @@ def build_deminfhelper_config(out_dir, vcf_file, ref_fasta, prefix, output, para
         f"msmc2_kwargs: {params['msmc2_kwargs']}",
         "## SMC++",
         f"out_dir_smcpp: {out_dir}/output_smcpp/",
-        f"plot_file_smcpp: {out_dir}/output_smcpp/{prefix}_inference.csv",
+        f"plot_file_smcpp: {out_dir}/output_smcpp/{population}_inference.csv",
         "## PSMC",
         f"out_dir_psmc: {out_dir}/output_psmc/",
         f"psmc_kwargs: {params['psmc_kwargs']}",

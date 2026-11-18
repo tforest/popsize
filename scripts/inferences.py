@@ -95,7 +95,7 @@ def run_dadi_cli(popid, out_dir, sfs_path, optimizations=None,
         cmd1 = "".join(["dadi-cli InferDM --fs ", sfs_path, \
                         " --model three_epoch --lbounds ", " ".join(map(str, lower_bounds)), \
                         " --ubounds ", " ".join(map(str, upper_bounds)),
-                        " --p0 ", p0, " --output ", \
+                        " --p0 ", " ".join(map(str, p0)), " --output ", \
                         out_dir+str(popid), " --force-convergence ", str(check_convervence_step) ])
     else:
         cmd1 = "".join(["dadi-cli InferDM --fs ", sfs_path, \
@@ -448,7 +448,7 @@ def psmc(ref_genome, contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, kwargs
     for process in processes:
         process.wait()
     cmd3 = " ".join(["cat", out_dir+"*.psmc >", out_dir+'/'+popid+"_combined.psmc.final", ";"
-    "psmc_plot.pl", "-g", gen_time, "-x", "0", "-u", mu, "-M '"+",".join(pop_ind)+"'", popid, out_dir+'/'+popid+"_combined.psmc.final" ,";",
+    "psmc_plot.pl", "-g", str(gen_time), "-x", "0", "-u", str(mu), "-M '"+",".join(pop_ind)+"'", popid, out_dir+'/'+popid+"_combined.psmc.final" ,";",
     "mv", popid+".*.par", out_dir, "; mv", popid+"*.eps", out_dir])
     print(cmd3)
     with open(out_dir+popid+"_psmc_combine.log", 'w') as log:
@@ -537,7 +537,7 @@ def smcpp(contigs, popid, pop_ind, vcf, out_dir, mu, gen_time, mask, num_cpus=No
 
     # Once all contig processing is done, proceed with the next steps
     kept_files = [f for f in os.listdir(out_dir) if os.path.isfile(os.path.join(out_dir, f)) and f.endswith(".smc.gz") and os.path.getsize(os.path.join(out_dir, f)) > 0]
-    cmd2 = ["smc++", "estimate", "-o", out_dir, "--base", popid, mu] + [os.path.join(out_dir, f) for f in kept_files]
+    cmd2 = ["smc++", "estimate", "-o", out_dir, "--base", popid, str(mu)] + [os.path.join(out_dir, f) for f in kept_files]
     print(cmd2)
     output2 = subprocess.check_output(cmd2)
     output2 = output2.decode(encoding="utf-8")

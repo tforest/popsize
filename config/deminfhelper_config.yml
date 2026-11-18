@@ -5,11 +5,19 @@
 # sample list, or output directories are deduced 
 # from the snpArcher run itself using common.smk. 
 
-### POP. DEFINITION
-pop_name: picus_viridis
+### POPULATION(S)
+# One entry per population: name -> member sample IDs, or 'all' to use
+# every sample found in the VCF for that population.
+
+#populations:
+#  picus_viridis: all
+
+populations:
+  hist: [SAMN38508692, SAMN38508693, SAMN38508694, SAMN38508695, SAMN38508696]
+  cont: [SAMN38508697, SAMN38508698, SAMN38508699, SAMN38508701, SAMN38508702]
 
 # generation time (avg. reprod. time in years)
-gen_time: 5.6
+gen_time: 3.5
 # mutation rate (per base per generation)
 mut_rate: 5e-09
 

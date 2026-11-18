@@ -68,6 +68,8 @@ import argparse
 import numpy as np
 import os
 import shutil
+import subprocess
+import sys
 
 
 ## IMPORT CUSTOM FUNCTIONS
@@ -94,6 +96,7 @@ def parse_args():
     #mandatory arguments
     parser.add_argument("--config_file", help="path to the configuration file")
     #optional arguments
+    parser.add_argument("--population", help="Restrict this invocation to a single named population from name_pop. Used internally when name_pop declares more than one population, to dispatch one parallel subprocess per population; not normally set by hand.", type=str, default=None)
     parser.add_argument("--cpus", help="# CPU threads to use",  type=int, default=1)
     parser.add_argument("--mem", help="Memory (MiB) allocated for subprocesses",  type=int, default=4096)
     # mask
@@ -181,7 +184,6 @@ def main():
             'out_dir': args.out,
             'vcf': args.vcf,
             'name_pop': [args.popid],
-            'npop': 1,
             args.popid: args.samples,
             'mem': args.mem,
             'folded': args.folded,
@@ -232,6 +234,24 @@ def main():
         param["missingness_by_site"] = 0
     #sfs size after missingness filter, if uneven then nb of diploid indiviuals is sample_size - param["missingness_by_site"]//2 - 1 else  param["missingness_by_site"] - n//2
     param["sfs_size"] = param["sample_size"] - (param["missingness_by_site"] % 2 + param["missingness_by_site"] // 2)
+
+    ## MULTI-POPULATION DISPATCH
+    if args.population is None and len(param["name_pop"]) > 1:
+        procs = []
+        for p in param["name_pop"]:
+            cmd = [sys.executable, os.path.abspath(__file__)] + sys.argv[1:] + ["--population", p]
+            print(f"Dispatching population '{p}' in a parallel subprocess: {' '.join(cmd)}")
+            procs.append((p, subprocess.Popen(cmd)))
+        failed = [p for p, proc in procs if proc.wait() != 0]
+        if failed:
+            print(f"Error: population(s) failed: {', '.join(failed)}")
+            exit(1)
+        return
+    elif args.population is not None:
+        if args.population not in param["name_pop"]:
+            raise ValueError(f"--population {args.population} is not declared in name_pop: {param['name_pop']}")
+        param["name_pop"] = [args.population]
+
     ## CREATING DIRECTORIES
     os.makedirs(param["out_dir"], exist_ok=True)
 
@@ -256,7 +276,7 @@ def main():
             # add/update L_computed in the config file
             param["L_computed"] = res_pars[2]
             print("Adding L_computed=",  param["L_computed"], "to", args.config_file)
-            update_config(config_dict = param, 
+            update_config(config_dict = {"L_computed": param["L_computed"]},
                           config_file = args.config_file, args=args)
     if args.sfs:
         if not os.path.exists(param["out_dir_sfs"]):
@@ -307,12 +327,11 @@ def main():
         if args.sfs == False:
             SFS_dict = {}
             for p in param["name_pop"]:
-                if "path_to_sfs" not in param.keys():
-                    print("--sfs flag or path_to_sfs missing")
+                if "out_dir_sfs" not in param.keys():
+                    print("--sfs flag or out_dir_sfs missing")
                 else:
-                    for p in param["name_pop"]:
-                        sfs_list = parse_sfs(param["path_to_sfs"])
-                        SFS_dict[param["name_pop"][0]] = sfs_list
+                    sfs_list = parse_sfs(param["out_dir_sfs"] + "SFS_" + p + ".fs")
+                    SFS_dict[p] = sfs_list
         # SFS_dict_trans = {}
         # for p in param["name_pop"]:
         #     SFS_dict_trans[p] = transform_sfs(sfs = SFS_dict[p], n = param["n_"+p], \
@@ -327,12 +346,13 @@ def main():
     if args.stairwayplot2:
         os.makedirs(param["out_dir_stairwayplot2"], exist_ok=True)
         if args.sfs == False:
-            if "path_to_sfs" not in param.keys():
-                print("--sfs flag or path_to_sfs missing")
+            if "out_dir_sfs" not in param.keys():
+                print("--sfs flag or out_dir_sfs missing")
             else:
                 SFS_dict = {}
-                sfs_list = parse_sfs(param["path_to_sfs"])
-                SFS_dict[param["name_pop"][0]] = sfs_list
+                for p in param["name_pop"]:
+                    sfs_list = parse_sfs(param["out_dir_sfs"] + "SFS_" + p + ".fs")
+                    SFS_dict[p] = sfs_list
 
         for p in param["name_pop"]:
             pop_dir = os.path.join(param["out_dir_stairwayplot2"], p)
@@ -364,9 +384,9 @@ def main():
         for p in param["name_pop"]:
             run_dadi_cli(popid = p, out_dir = param["out_dir_dadi"],
                          sfs_path = param["out_dir_sfs"]+"SFS_"+p+".fs",
-                         p0 = eval(param["p0"]),
-                         lower_bounds = eval(param["lower_bound"]),
-                         upper_bounds = eval(param["upper_bound"]),
+                         p0 = eval(param["p0"]) if isinstance(param["p0"], str) else param["p0"],
+                         lower_bounds = eval(param["lower_bound"]) if isinstance(param["lower_bound"], str) else param["lower_bound"],
+                         upper_bounds = eval(param["upper_bound"]) if isinstance(param["upper_bound"], str) else param["upper_bound"],
                          optimizations = param["optimizations"])
 
     # Dadi plot
@@ -374,9 +394,9 @@ def main():
         for p in param["name_pop"]:
             dadi_vals = dadi_output_parse(param["out_dir_dadi"]+p+".InferDM.bestfits")
             plot_dadi_output_three_epochs(dadi_vals,p,out_dir = param['final_out_dir'],
-                                          mu = eval(param['mut_rate']),
-                                          gen_time = eval(param['gen_time']),
-                                          L = eval(param['L']),
+                                          mu = eval(param['mut_rate']) if isinstance(param['mut_rate'], str) else param['mut_rate'],
+                                          gen_time = eval(param['gen_time']) if isinstance(param['gen_time'], str) else param['gen_time'],
+                                          L = eval(param['L']) if isinstance(param['L'], str) else param['L'],
                                           plot_format=param["plot_format"])
     #GQ distribution
     if args.gq_distrib:
@@ -422,8 +442,8 @@ def main():
         os.makedirs(param["out_dir_stats"], exist_ok=True)
         SFS_dict = {}
         for p in param["name_pop"]:
-            sfs_list = parse_sfs(param["path_to_sfs"])
-            SFS_dict[param["name_pop"][0]] = sfs_list
+            sfs_list = parse_sfs(param["out_dir_sfs"] + "SFS_" + p + ".fs")
+            SFS_dict[p] = sfs_list
             barplot_sfs(sfs = SFS_dict[p], output_file = param["out_dir_stats"]+"SFS_"+p+"."+param["plot_format"], title = "SFS "+p, transformed = False )
 
 
@@ -439,10 +459,11 @@ def main():
     if args.plot_stairwayplot2 and args.stairwayplot2==False:
         os.makedirs(param["out_dir_stairwayplot2"], exist_ok=True)
         for p in param["name_pop"]:
-            if "".join(["summary_file_stw"]) not in param.keys():
+            summary_file = param["out_dir_stairwayplot2"] + p + "/" + p + ".final.summary"
+            if not os.path.exists(summary_file):
                 print("path to the population final summary file missing")
             else:
-                plot_stairwayplot2(popid = p, summary_file = param["summary_file_stw"], \
+                plot_stairwayplot2(popid = p, summary_file = summary_file, \
                                out_dir = param["final_out_dir"], plot_format=param["plot_format"])
     if args.plot_msmc2:
         for p in param["name_pop"]:
@@ -461,7 +482,7 @@ def main():
     # Plot SMC++
     if args.plot_smcpp:
         for p in param["name_pop"]:
-            plot_smcpp(popid = p, summary_file = param["plot_file_smcpp"], out_dir = param["final_out_dir"],
+            plot_smcpp(popid = p, summary_file = param["out_dir_smcpp"]+p+"_inference.csv", out_dir = param["final_out_dir"],
                        plot_format=param["plot_format"])
 
 
@@ -471,8 +492,8 @@ def main():
             Gplot(gen_time=param["gen_time"], mu=param["mut_rate"],
                   L=param["L_computed"], out_dir=param["out_dir"], popid=p,
                   dadi_file=param["out_dir_dadi"]+p+".InferDM.bestfits",
-                  summary_file2=param["plot_file_smcpp"],
-                  summary_file=param["summary_file_stw"],
+                  summary_file2=param["out_dir_smcpp"]+p+"_inference.csv",
+                  summary_file=param["out_dir_stairwayplot2"]+p+"/"+p+".final.summary",
                   msmc2_summary_file=param["out_dir_msmc2"]+"/"+p+"_msmc2.final.txt",
                   psmc_output_prefix=param["out_dir_psmc"]+"/"+p,
                   plot_format=param["plot_format"])
