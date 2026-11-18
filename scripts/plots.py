@@ -884,8 +884,34 @@ def plot_pca(plink_eigenvec, plink_eigenval, popid, out_dir, n_clusters=9, plot_
 
     # Bar plot of explained variance
     plt.figure(figsize=(10, 6))
-    plt.bar(range(1, num_components + 1), variance_explained * 100, color='grey', alpha=0.7)
-    plt.xlabel('Number of Components (K)')
+    plt.bar(range(1, num_components + 1), variance_explained, color='grey', alpha=0.7)
+    plt.xlabel('Component index (K)')
     plt.ylabel('Proportion of Explained Variance (%)')
-    plt.title(f'Explained Variance by Components ({num_components} components)')
+    plt.title(f'Explained Variance by Component ({num_components} components)')
     plt.savefig(out_dir+"/"+popid+f"_explained_var.{plot_format}")
+
+def plot_missing_sample(data, PARAM):
+    plt.figure(figsize=(6, 4))
+    plt.hist(data, bins='auto', color='grey', edgecolor='black')
+    plt.title("Histogram of Missing Data Proportions (Sample-wise)")
+    plt.xlabel("Missing Proportion")
+    plt.ylabel("Frequency (nb samples)")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    os.makedirs(PARAM ["out_dir_stats"], exist_ok=True)
+    plt.savefig(PARAM ["out_dir_stats"] + "missing_sample_histogram." + PARAM.get("plot_format", "png"))
+
+def plot_missing_site_cumulative(data, PARAM):
+    cumulative = np.cumsum(data)
+    cumulative_freq = cumulative / cumulative[-1]
+    plt.figure(figsize=(8, 4))
+    plt.plot(range(len(data)), cumulative_freq, marker='o', linestyle='-', color='grey')
+    plt.title("Missing Site - Cumulative Frequency")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Cumulated freq.")
+    plt.grid(True)
+    plt.tight_layout()
+    os.makedirs(PARAM ["out_dir_stats"], exist_ok=True)
+    plt.savefig(PARAM ["out_dir_stats"] + "missing_site_cumulative." + PARAM.get("plot_format", "png"))
+
+

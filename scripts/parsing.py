@@ -669,9 +669,6 @@ def first_parsing(PARAM, contigs, mask = None):
     stats['missingness_by_sample'] = np.array(stats['missingness_by_sample']) / nb_line_not_skip
     return cols_in_vcf, exclude_pos, snp_dist_list, stats, tab_size
 
-
-import matplotlib.pyplot as plt
-
 def plot_missing_sample(data, PARAM):
     plt.figure(figsize=(6, 4))
     plt.hist(data, bins='auto', color='grey', edgecolor='black')
@@ -835,6 +832,6 @@ def vcf_line_parsing(PARAM, SFS = False, GQ = False, SMCPP = False, mask = None,
     print(f"Stats:\n-------\n# SNPs:\t{All_snp_count}\nMissing sample:\t{stats['missingness_by_sample']}\nMissing site:\t{stats['missingness_by_site']}\nPluriallelic sites or indels:\t{stats['pluriall']}"+\
           f"\nSites above percentile cutoff [{percentile_cutoff}]:\t{stats['above_snp_distrib_cutoff']}\n"+\
           f"Kept sites:\t{Kept_snp_count}")
-    plot_missing_sample(stats['missingness_by_sample'], PARAM)
-    plot_missing_site_cumulative(stats['missingness_by_site'], PARAM)
+    plots.plot_missing_sample(stats['missingness_by_sample'], PARAM)
+    plots.plot_missing_site_cumulative(stats['missingness_by_site'], PARAM)
     return SFS_dict, GQ_dict, round(L), snps_distance_by_chr

@@ -3,12 +3,12 @@ import gzip
 
 import yaml
 
-_TEMPLATE_PATH = "workflow/modules/popsize/config/deminfhelper_config.yml"
+deminfhelper_config = "workflow/modules/popsize/config/deminfhelper_config.yml"
 
 
 def resolve_popsize_params():
     """All module parameters, read from config/deminfhelper_config.yml."""
-    with open(_TEMPLATE_PATH) as f:
+    with open(deminfhelper_config) as f:
         return yaml.safe_load(f)
 
 

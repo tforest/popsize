@@ -59,7 +59,7 @@ python3 DemInfHelper/deminfhelper.py --config_file config.txt --plot_stairwayplo
 - The tool creates directories for output and results.
 
 """
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 ## IMPORT MODULES
 
 import gzip
@@ -79,7 +79,7 @@ if __package__ is None or __package__ == '':
     from sfs import *
     from plots import *
 else:
-    from .parsing import * 
+    from .parsing import *
     from .inferences import *
     from .sfs import *
     from .plots import *
@@ -158,7 +158,7 @@ def parse_args():
 
     if not args.config_file and not all(optional_args):
         parser.error("At least one of the optional arguments is missing: popid, samples, vcf, gentime, mu, out, L, n.\nMaybe you forgot to provide a config file?")
-        
+
     # Check if at least one of the required flags is set
     if not (args.sfs or args.plot_sfs or args.stairwayplot2 or args.plot_stairwayplot2 or 
             args.dadi or args.plot_dadi or args.msmc2 or args.plot_msmc2 or 
@@ -322,7 +322,7 @@ def main():
                         sfs_out.write("0 ")
                 # trailing carriage return
                 sfs_out.write("\n")
-                
+
     if args.sfs_transformed:
         if args.sfs == False:
             SFS_dict = {}
@@ -470,7 +470,7 @@ def main():
             plot_msmc2(popid = p, summary_file = "".join([param["out_dir_msmc2"], "/", p, "_msmc2.final.txt"]), \
                            mu = param["mut_rate"], gen_time = param["gen_time"], out_dir = param["final_out_dir"],
                            plot_format=param["plot_format"])
-            
+
     ## Plot PSMC
     if args.plot_psmc:
         for p in param["name_pop"]:

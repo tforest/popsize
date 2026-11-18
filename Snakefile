@@ -5,11 +5,6 @@ PARAMS = resolve_popsize_params()
 POPULATIONS, MULTI_POP, _TOOLS = get_popsize_targets(PARAMS)
 VCF, REF_FASTA = get_snparcher_paths(config)
 
-# Bare wildcard tokens for f-string embedding. _POP is always a real "{population}"
-# wildcard (even with a single population, trivially constrained to one legal value,
-# so behavior/paths are unaffected). _POP_DIR additionally nests output under a
-# per-population directory, but only when there truly is more than one population --
-# this keeps the single-population file layout byte-identical to before.
 _POP = "{population}"
 _POP_DIR = f"{_POP}/" if MULTI_POP else ""
 
